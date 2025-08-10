@@ -1,77 +1,171 @@
+// app/page.js
 'use client';
-import { useState } from 'react';
-import ContactSearch from '../components/ContactSearch';
-import ChatBox from '../components/ChatBox';
-import ModelPicker from '../components/ModelPicker';
 
-export default function HomePage() {
-  const [contact, setContact] = useState(null);
-  const [tier, setTier] = useState('light');
-  const [chatKey, setChatKey] = useState(0); // bump to reset ChatBox
+import { useState, useEffect } from 'react';
+import ContactSearch from '@/components/ContactSearch';
+import ChatBox from '@/components/ChatBox';
+import ModelPicker from '@/components/ModelPicker';
+import SessionsSidebar from '@/components/SessionsSidebar';
+import styles from './page.module.css';
 
-  async function startSession(c = contact) {
-    if (!c) {
-      alert('Select a contact first.');
-      return;
+export default function Home() {
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [modelTier, setModelTier] = useState('medium');
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  // Load session from window if exists
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.__SESSION_ID) {
+      setSessionId(window.__SESSION_ID);
     }
-    // debug log in case we need it
-    console.log('startSession POST', { contactId: c.id, tier });
+  }, []);
 
+  const createNewSession = async (contactId) => {
+    if (!contactId) return;
+    
+    setLoading(true);
     try {
       const res = await fetch('/api/chat/session/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId: c.id, modelTier: tier }),
+        body: JSON.stringify({ 
+          contactId,
+          title: `Chat - ${new Date().toLocaleDateString()}`,
+          modelTier 
+        })
       });
 
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!res.ok) throw new Error('Failed to create session');
 
-      if (!res.ok) throw new Error(data?.error || data?.raw || `HTTP ${res.status}`);
-
-      // expose for ChatBox
-      window.__SESSION_ID = data.sessionId;
-      setChatKey(k => k + 1);
-    } catch (e) {
-      alert(`Could not start chat: ${e.message}`);
+      const data = await res.json();
+      setSessionId(data.sessionId);
+      
+      if (typeof window !== 'undefined') {
+        window.__SESSION_ID = data.sessionId;
+      }
+    } catch (err) {
+      console.error('Error creating session:', err);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  const handleSelect = async (c) => {
-    setContact(c);
-    await startSession(c); // auto-start when a contact is selected
+  const handleContactSelect = async (contact) => {
+    setSelectedContact(contact);
+    await createNewSession(contact.id);
+  };
+
+  const handleSessionSelect = async (newSessionId) => {
+    setSessionId(newSessionId);
+    if (typeof window !== 'undefined') {
+      window.__SESSION_ID = newSessionId;
+    }
+
+    // Load session details to get contact
+    try {
+      const res = await fetch(`/api/chat/session/messages?sessionId=${newSessionId}`);
+      const data = await res.json();
+      if (data.session?.contact_id) {
+        // Optionally fetch full contact details
+        setSelectedContact({ id: data.session.contact_id });
+      }
+    } catch (err) {
+      console.error('Error loading session:', err);
+    }
+  };
+
+  const handleNewChat = () => {
+    setSelectedContact(null);
+    setSessionId(null);
+    if (typeof window !== 'undefined') {
+      delete window.__SESSION_ID;
+    }
   };
 
   return (
-    <main className="mx-auto max-w-4xl p-6 space-y-5">
-      {/* Top bar */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">CRM Chat</h1>
-        <div className="flex items-center gap-3">
-          <ModelPicker value={tier} onChange={setTier} />
+    <div className={styles.container}>
+      {showSidebar && (
+        <SessionsSidebar
+          currentSessionId={sessionId}
+          onSessionSelect={handleSessionSelect}
+          contactId={selectedContact?.id}
+          onNewChat={handleNewChat}
+        />
+      )}
+
+      <div className={styles.mainContent}>
+        <header className={styles.header}>
           <button
-            type="button"
-            onClick={() => startSession()}
-            disabled={!contact}
-            className="rounded-full border px-3 py-1 bg-white hover:bg-gray-50 disabled:opacity-50"
-            title="Start a new chat"
+            className={styles.sidebarToggle}
+            onClick={() => setShowSidebar(!showSidebar)}
+            title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
           >
-            New chat
+            {showSidebar ? '◀' : '▶'}
           </button>
+
+          <h1 className={styles.title}>CRM Chat</h1>
+
+          <div className={styles.headerControls}>
+            <ModelPicker
+              value={modelTier}
+              onChange={setModelTier}
+            />
+            
+            <button
+              className={styles.newChatButton}
+              onClick={handleNewChat}
+              disabled={!selectedContact}
+            >
+              New Chat
+            </button>
+          </div>
+        </header>
+
+        <div className={styles.searchSection}>
+          <ContactSearch onSelect={handleContactSelect} />
+          {selectedContact && (
+            <div className={styles.selectedContact}>
+              <span className={styles.contactName}>
+                {selectedContact.name || selectedContact.email}
+              </span>
+              {selectedContact.company && (
+                <span className={styles.contactCompany}>
+                  {selectedContact.company}
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
+        <main className={styles.chatSection}>
+          {!selectedContact ? (
+            <div className={styles.emptyState}>
+              <h2>Welcome to CRM Chat</h2>
+              <p>Search and select a customer above to start a conversation</p>
+              <p className={styles.hint}>
+                💡 Ask questions about orders, shipping, messages, or get summaries
+              </p>
+            </div>
+          ) : loading ? (
+            <div className={styles.loading}>Creating session...</div>
+          ) : (
+            <ChatBox
+              contactId={selectedContact.id}
+              sessionId={sessionId}
+              modelTier={modelTier}
+            />
+          )}
+        </main>
+
+        <footer className={styles.footer}>
+          <div className={styles.stats}>
+            Model: {modelTier} | 
+            Session: {sessionId ? sessionId.substring(0, 8) : 'none'}
+          </div>
+        </footer>
       </div>
-
-      {/* Contact selector */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-gray-700">Select a contact</h2>
-        <ContactSearch onSelect={handleSelect} />
-      </section>
-
-      {/* Chat area */}
-      <section>
-        <ChatBox contact={contact} tier={tier} chatKey={chatKey} />
-      </section>
-    </main>
+    </div>
   );
 }
