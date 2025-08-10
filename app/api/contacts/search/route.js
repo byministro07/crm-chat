@@ -6,6 +6,7 @@ export async function GET(request) {
   const q = (searchParams.get('q') || '').trim();
   if (!q) return NextResponse.json([], { status: 200 });
 
+  // simple fuzzy pattern, newest activity first
   const safe = q.replaceAll('%','').replaceAll('_','');
   const pattern = `%${safe}%`;
 
@@ -16,6 +17,8 @@ export async function GET(request) {
     .order('last_activity_at', { ascending: false })
     .limit(20);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data ?? [], { status: 200 });
 }
