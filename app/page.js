@@ -7,33 +7,40 @@ import ModelPicker from '../components/ModelPicker';
 export default function HomePage() {
   const [contact, setContact] = useState(null);
   const [tier, setTier] = useState('light');
-  const [chatKey, setChatKey] = useState(0); // increments to clear ChatBox UI
+  const [chatKey, setChatKey] = useState(0); // bump to reset ChatBox
 
   async function startSession(c = contact) {
-  if (!c) return;
-  console.log('startSession → POST', { contactId: c.id, tier }); // debug
+    if (!c) {
+      alert('Select a contact first.');
+      return;
+    }
+    // debug log in case we need it
+    console.log('startSession POST', { contactId: c.id, tier });
 
-  const res = await fetch('/api/chat/session/new', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contactId: c.id, modelTier: tier }),
-  });
+    try {
+      const res = await fetch('/api/chat/session/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: c.id, modelTier: tier }),
+      });
 
-  const text = await res.text();
-  let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-  if (!res.ok) throw new Error(data?.error || data?.raw || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(data?.error || data?.raw || `HTTP ${res.status}`);
 
-  window.__SESSION_ID = data.sessionId;
-  setChatKey(k => k + 1);
-} catch (e) {
+      // expose for ChatBox
+      window.__SESSION_ID = data.sessionId;
+      setChatKey(k => k + 1);
+    } catch (e) {
       alert(`Could not start chat: ${e.message}`);
     }
   }
 
   const handleSelect = async (c) => {
     setContact(c);
-    await startSession(c); // auto start a fresh session when selecting a contact
+    await startSession(c); // auto-start when a contact is selected
   };
 
   return (
@@ -44,8 +51,10 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <ModelPicker value={tier} onChange={setTier} />
           <button
+            type="button"
             onClick={() => startSession()}
-            className="rounded-full border px-3 py-1 bg-white hover:bg-gray-50"
+            disabled={!contact}
+            className="rounded-full border px-3 py-1 bg-white hover:bg-gray-50 disabled:opacity-50"
             title="Start a new chat"
           >
             New chat
