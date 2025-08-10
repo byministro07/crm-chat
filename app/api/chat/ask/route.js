@@ -1,4 +1,4 @@
-\import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { MODEL_BY_TIER } from '@/lib/models';
 

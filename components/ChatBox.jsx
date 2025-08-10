@@ -1,13 +1,16 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function ChatBox({ contact, tier, chatKey }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
 
-  // Clear messages when parent increments chatKey (New chat)
-  useEffect(() => { setMessages([]); setInput(''); }, [chatKey]);
+  // Focus on mount / when new chat / when contact changes
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { setMessages([]); setInput(''); inputRef.current?.focus(); }, [chatKey]);
+  useEffect(() => { inputRef.current?.focus(); }, [contact]);
 
   const canSend = !!contact && input.trim() && !busy;
 
@@ -36,29 +39,27 @@ export default function ChatBox({ contact, tier, chatKey }) {
       setMessages(m => [...m, { role: 'assistant', text: `Error: ${e.message}` }]);
     } finally {
       setBusy(false);
+      inputRef.current?.focus(); // keep cursor ready
     }
   }
 
   return (
     <div className="space-y-3">
-      {/* Subtle banner if no contact yet */}
       {!contact && (
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-700">
-          Select a contact above to enable grounded answers (shipping, totals, tracking). Send is disabled until then.
+          Select a contact above to enable grounded answers (shipping, totals, tracking).
         </div>
       )}
 
-      {/* Messages — no outer box, clean bubbles like ChatGPT */}
       <div className="min-h-[16rem] space-y-3">
         {messages.length === 0 && (
           <div className="text-sm text-gray-500">Ask something to get started.</div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <div
-              className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-2xl px-3 py-2
-              ${m.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}
-            >
+          <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+            <div className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-2xl px-3 py-2 ${
+              m.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
+            }`}>
               {m.text}
             </div>
             {m.role === 'assistant' && m.meta?.model && (
@@ -68,9 +69,10 @@ export default function ChatBox({ contact, tier, chatKey }) {
         ))}
       </div>
 
-      {/* Input row like ChatGPT */}
       <div className="flex gap-2">
         <input
+          ref={inputRef}
+          autoFocus
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => (e.key === 'Enter' && !e.shiftKey ? (e.preventDefault(), send()) : null)}
