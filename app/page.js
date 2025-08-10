@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import ContactSearch from '../components/ContactSearch';
 import ChatBox from '../components/ChatBox';
 import ModelPicker from '../components/ModelPicker';
