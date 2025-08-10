@@ -1,16 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-export default function ChatBox({ contact, tier, chatKey }) {
+export default function ChatBox({ contact, tier, chatKey, onNewChat }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
 
-  // Focus on mount / when new chat / when contact changes
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => { setMessages([]); setInput(''); inputRef.current?.focus(); }, [chatKey]);
-  useEffect(() => { inputRef.current?.focus(); }, [contact]);
+  useEffect(() => { setMessages([]); setInput(''); setTimeout(() => inputRef.current?.focus(), 0); }, [chatKey]);
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 0); }, [contact]);
 
   const canSend = !!contact && input.trim() && !busy;
 
@@ -30,7 +29,7 @@ export default function ChatBox({ contact, tier, chatKey }) {
       const res = await fetch('/api/chat/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId: contact.id, question: q, tier }),
+        body: JSON.stringify({ contactId: contact.id, question: q, tier, sessionId: window.__SESSION_ID }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -39,7 +38,7 @@ export default function ChatBox({ contact, tier, chatKey }) {
       setMessages(m => [...m, { role: 'assistant', text: `Error: ${e.message}` }]);
     } finally {
       setBusy(false);
-      inputRef.current?.focus(); // keep cursor ready
+      setTimeout(() => inputRef.current?.focus(), 0); // always return focus
     }
   }
 
@@ -69,7 +68,10 @@ export default function ChatBox({ contact, tier, chatKey }) {
         ))}
       </div>
 
-      <div className="flex gap-2">
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => { e.preventDefault(); send(); }}
+      >
         <input
           ref={inputRef}
           autoFocus
@@ -81,13 +83,14 @@ export default function ChatBox({ contact, tier, chatKey }) {
           className="flex-1 rounded-full border px-4 py-2 bg-white"
         />
         <button
-          onClick={send}
+          type="submit"
+          onClick={(e) => e.currentTarget.blur()} // don't keep focus on the button
           disabled={!canSend}
           className="rounded-full bg-black px-4 py-2 text-white disabled:opacity-50"
         >
           Send
         </button>
-      </div>
+      </form>
     </div>
   );
 }
