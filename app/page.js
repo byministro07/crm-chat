@@ -10,17 +10,23 @@ export default function HomePage() {
   const [chatKey, setChatKey] = useState(0); // increments to clear ChatBox UI
 
   async function startSession(c = contact) {
-    if (!c) return;
-    try {
-      const res = await fetch('/api/chat/session/new', { /* ... */ });
-const text = await res.text();
-let data;
-try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  if (!c) return;
+  console.log('startSession → POST', { contactId: c.id, tier }); // debug
 
-if (!res.ok) throw new Error(data?.error || data?.raw || `HTTP ${res.status}`);
-window.__SESSION_ID = data.sessionId;
-setChatKey(k => k + 1);
-    } catch (e) {
+  const res = await fetch('/api/chat/session/new', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contactId: c.id, modelTier: tier }),
+  });
+
+  const text = await res.text();
+  let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+  if (!res.ok) throw new Error(data?.error || data?.raw || `HTTP ${res.status}`);
+
+  window.__SESSION_ID = data.sessionId;
+  setChatKey(k => k + 1);
+} catch (e) {
       alert(`Could not start chat: ${e.message}`);
     }
   }
