@@ -1,40 +1,19 @@
+// app/api/chat/ask/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { MODEL_BY_TIER } from '@/lib/models';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-function detectIntent(q) {
-  const text = q.toLowerCase();
-
-  const lastN = text.match(/last\s+(\d+)\s+orders?/i);
-  if (lastN) return { type: 'last_n_orders', n: Math.max(1, Math.min(10, parseInt(lastN[1], 10))) };
-
-  if (/(shipping address|ship(ping)?\s*address|where.*ship)/i.test(text))
-    return { type: 'shipping_address' };
-
-  if (/(last|latest).*order.*(total|amount|price)/i.test(text) || /invoice.*total/i.test(text))
-    return { type: 'last_order_total' };
-
-  if (/(tracking|tracking number|tracking link)/i.test(text))
-    return { type: 'tracking' };
-
-  if (/(last|latest).*(message|sms|email|note|call)/i.test(text))
-    return { type: 'last_message' };
-
-  if (/(when|what).*(last|latest).*(talk|contact|message|reach(ed)? out)/i.test(text) || /last contact date/i.test(text))
-    return { type: 'last_contact_date' };
-
-  if (/(summari[sz]e|recap|give me a summary).*(last|recent).*(messages?|conversation|thread)/i.test(text))
-    return { type: 'summarize_recent', n: 10 };
-
-  return null;
-}
-
+/* ---------------------- helpers ---------------------- */
 async function getLatestOrder(contactId) {
   const { data } = await supabaseAdmin
     .from('orders')
-    .select('order_id, order_date, order_total, invoice_link, shipping_address_raw, shipping_street1, shipping_street2, shipping_city, shipping_state, shipping_zip, tracking_number, tracking_link')
+    .select(
+      'order_id, order_date, order_total, invoice_link, ' +
+      'shipping_address_raw, shipping_street1, shipping_street2, shipping_city, shipping_state, shipping_zip, ' +
+      'tracking_number, tracking_link'
+    )
     .eq('contact_id', contactId)
     .order('order_date', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -47,7 +26,9 @@ function formatOfficialAddress(order) {
   if (!order) return null;
   return (
     order.shipping_address_raw ||
-    [order.shipping_street1, order.shipping_street2, order.shipping_city, order.shipping_state, order.shipping_zip].filter(Boolean).join(', ')
+    [order.shipping_street1, order.shipping_street2, order.shipping_city, order.shipping_state, order.shipping_zip]
+      .filter(Boolean)
+      .join(', ')
   ) || null;
 }
 
@@ -62,6 +43,41 @@ async function getLastMessages(contactId, n = 10) {
   return data || [];
 }
 
+/* ---------------- intent detection (fixed) ------------ */
+function parseCount(text, def = 10) {
+  const m = text.match(/last\s+(\d+)\s+(?:messages?|msgs?|conversations?|notes?)/i);
+  return m ? Math.max(1, Math.min(50, parseInt(m[1], 10))) : def;
+}
+
+function detectIntent(q) {
+  const text = q.toLowerCase();
+  const nMsgs = parseCount(text, 10);
+
+  // Summaries / analysis FIRST (so it doesn't get caught by "last message")
+  if (/(summari[sz]e|recap|overview)/i.test(text) && /(messages?|conversations?|thread)/i.test(text)) {
+    return { type: 'summarize_recent', n: nMsgs, mode: 'summary' };
+  }
+  if (/(what.*mean|what do you think|is .*approved|approved or not|decision|intent|meaning)/i.test(text)
+      && /(last|recent).*(messages?|conversations?)/i.test(text)) {
+    return { type: 'summarize_recent', n: nMsgs, mode: 'qa' };
+  }
+
+  // Orders/tools
+  const lastNOrders = text.match(/last\s+(\d+)\s+orders?/i);
+  if (lastNOrders) return { type: 'last_n_orders', n: Math.max(1, Math.min(10, parseInt(lastNOrders[1], 10))) };
+  if (/(shipping address|ship(ping)?\s*address|where.*ship)/i.test(text)) return { type: 'shipping_address' };
+  if (/(last|latest).*order.*(total|amount|price)/i.test(text) || /invoice.*total/i.test(text)) return { type: 'last_order_total' };
+  if (/(tracking|tracking number|tracking link)/i.test(text)) return { type: 'tracking' };
+
+  // Single last message & last contact date
+  if (/(?:^|\b)(last|latest)\s+message\b(?!s)/i.test(text)) return { type: 'last_message' }; // singular only
+  if (/(when|what).*(last|latest).*(talk|contact|message|reach(ed)? out)/i.test(text) || /last contact date/i.test(text))
+    return { type: 'last_contact_date' };
+
+  return null;
+}
+
+/* ----------------------- route ------------------------ */
 export async function POST(req) {
   try {
     const { contactId, question, tier = 'light' } = await req.json();
@@ -120,8 +136,11 @@ export async function POST(req) {
         .order('order_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(n);
-      if (!orders || orders.length === 0) return NextResponse.json({ answer: 'No orders found for this contact.', model: 'tool:db' });
-      const lines = orders.map(o => `${o.order_id} • ${o.order_date} • ${o.status ?? '—'} • $${Number(o.order_total ?? 0).toFixed(2)}`);
+      if (!orders || orders.length === 0)
+        return NextResponse.json({ answer: 'No orders found for this contact.', model: 'tool:db' });
+      const lines = orders.map(o =>
+        `${o.order_id} • ${o.order_date} • ${o.status ?? '—'} • $${Number(o.order_total ?? 0).toFixed(2)}`
+      );
       return NextResponse.json({ answer: `Last ${orders.length} orders:\n` + lines.join('\n'), model: 'tool:db' });
     }
 
@@ -146,16 +165,27 @@ export async function POST(req) {
       if (!msgs.length) return NextResponse.json({ answer: 'No conversations found for this contact.', model: 'tool:db' });
 
       const model = MODEL_BY_TIER[tier] || MODEL_BY_TIER.light;
-      const system = 'You are a helpful internal assistant. Summarize briefly using specific dates and next steps if any.';
+
       const convo = msgs
-        .slice() // copy
-        .reverse() // oldest → newest for readability
+        .slice()
+        .reverse()
         .map(m => {
           const stamp = m.occurred_at ? new Date(m.occurred_at).toISOString() : 'unknown time';
           const who = m.sender || (m.direction === 'inbound' ? 'Customer' : 'Agent');
           return `[${stamp}] ${who} (${m.channel || 'msg'}): ${m.body || '(no content)'}`;
         })
         .join('\n');
+
+      const system =
+        'You are an internal assistant. Base your answer STRICTLY on the provided messages. ' +
+        'If the user asks for a judgment (e.g., is the order approved), answer only if stated; ' +
+        'otherwise say you cannot tell from the messages. Be concise.';
+
+      const userPrompt =
+        intent.mode === 'summary'
+          ? `Summarize these ${msgs.length} recent messages into up to 3 short bullets with dates and any explicit next steps:\n\n${convo}`
+          : `Based ONLY on these ${msgs.length} recent messages, answer the user question:\n"${question}"\n\n` +
+            `If the messages do not say, respond: "I can't tell from the messages."\n\nMessages:\n${convo}`;
 
       const res = await fetch(OPENROUTER_URL, {
         method: 'POST',
@@ -168,9 +198,9 @@ export async function POST(req) {
           temperature: 0.2,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: `Summarize these ${msgs.length} recent messages:\n\n${convo}\n\nGive 3 bullets max.` },
+            { role: 'user', content: userPrompt },
           ],
-          max_tokens: 300,
+          max_tokens: 400,
         }),
       });
       if (!res.ok) {
