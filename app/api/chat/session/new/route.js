@@ -1,10 +1,13 @@
+// app/api/chat/session/new/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req) {
   try {
     const { contactId, title = null, modelTier = null } = await req.json();
-    if (!contactId) return NextResponse.json({ error: 'contactId required' }, { status: 400 });
+    if (!contactId) {
+      return NextResponse.json({ error: 'contactId required' }, { status: 400 });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('chat_sessions')
@@ -17,4 +20,9 @@ export async function POST(req) {
   } catch (e) {
     return NextResponse.json({ error: e.message || 'unknown error' }, { status: 400 });
   }
+}
+
+// Nice-to-have so browsers don't 405 on preflight
+export async function OPTIONS() {
+  return NextResponse.json({ ok: true });
 }
