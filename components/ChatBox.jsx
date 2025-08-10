@@ -1,30 +1,20 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-const TIERS = [
-  { key: 'light', label: 'Light' },
-  { key: 'medium', label: 'Medium' },
-  { key: 'high', label: 'High' },
-];
-
-export default function ChatBox({ contact }) {
-  const [tier, setTier] = useState('light');
+export default function ChatBox({ contact, tier, chatKey }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
 
-  const canSend = !!contact && input.trim() && !busy;
+  // Clear messages when parent increments chatKey (New chat)
+  useEffect(() => { setMessages([]); setInput(''); }, [chatKey]);
 
-  function newChat() {
-    setMessages([]);
-    setInput('');
-  }
+  const canSend = !!contact && input.trim() && !busy;
 
   function metaLabel(meta) {
     if (!meta?.model) return '';
     if (meta.model.startsWith('tool:db')) return 'from database';
-    // show underlying model + tier used
-    return `via ${meta.model} (${meta.tier ?? tier})`;
+    return `via ${meta.model} (${tier})`;
   }
 
   async function send() {
@@ -41,7 +31,7 @@ export default function ChatBox({ contact }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      setMessages(m => [...m, { role: 'assistant', text: data.answer, meta: { model: data.model, tier } }]);
+      setMessages(m => [...m, { role: 'assistant', text: data.answer, meta: { model: data.model } }]);
     } catch (e) {
       setMessages(m => [...m, { role: 'assistant', text: `Error: ${e.message}` }]);
     } finally {
@@ -51,46 +41,25 @@ export default function ChatBox({ contact }) {
 
   return (
     <div className="space-y-3">
-      {/* Top controls */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
-          {TIERS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTier(t.key)}
-              className={`rounded-full border px-3 py-1 text-sm ${tier===t.key ? 'bg-black text-white' : 'bg-white'}`}
-              title={`Use ${t.label} model`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={newChat}
-          className="ml-auto rounded-full border px-3 py-1 text-sm bg-white hover:bg-gray-50"
-          title="Start a new chat"
-        >
-          New chat
-        </button>
-      </div>
-
-      {/* Banner if no contact yet */}
+      {/* Subtle banner if no contact yet */}
       {!contact && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          Select a contact to ask grounded questions (shipping, totals, tracking).  
-          You can still type here, but the Send button is disabled until a contact is selected.
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-700">
+          Select a contact above to enable grounded answers (shipping, totals, tracking). Send is disabled until then.
         </div>
       )}
 
-      {/* Messages */}
-      <div className="rounded-xl border p-3 h-64 overflow-auto bg-white">
+      {/* Messages — no outer box, clean bubbles like ChatGPT */}
+      <div className="min-h-[16rem] space-y-3">
         {messages.length === 0 && (
           <div className="text-sm text-gray-500">Ask something to get started.</div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`mb-3 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <div className={`inline-block max-w-[90%] rounded-xl px-3 py-2 ${m.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-              <div className="whitespace-pre-wrap">{m.text}</div>
+          <div key={i} className={`${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+            <div
+              className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-2xl px-3 py-2
+              ${m.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}
+            >
+              {m.text}
             </div>
             {m.role === 'assistant' && m.meta?.model && (
               <div className="mt-1 text-xs text-gray-500">{metaLabel(m.meta)}</div>
@@ -99,7 +68,7 @@ export default function ChatBox({ contact }) {
         ))}
       </div>
 
-      {/* Input row */}
+      {/* Input row like ChatGPT */}
       <div className="flex gap-2">
         <input
           value={input}
@@ -107,12 +76,12 @@ export default function ChatBox({ contact }) {
           onKeyDown={e => (e.key === 'Enter' && !e.shiftKey ? (e.preventDefault(), send()) : null)}
           placeholder={contact ? 'Type your question…' : 'Select a contact first'}
           disabled={!contact || busy}
-          className="flex-1 rounded-xl border px-4 py-2 bg-white"
+          className="flex-1 rounded-full border px-4 py-2 bg-white"
         />
         <button
           onClick={send}
           disabled={!canSend}
-          className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="rounded-full bg-black px-4 py-2 text-white disabled:opacity-50"
         >
           Send
         </button>
