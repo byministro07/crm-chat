@@ -7,15 +7,44 @@ export async function GET(req) {
     const sessionId = searchParams.get('sessionId');
     if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
 
-    const { data, error } = await supabaseAdmin
+    // Get session data WITH contact info
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from('chat_sessions')
+      .select(`
+        id,
+        contact_id,
+        title,
+        model_tier,
+        created_at,
+        updated_at,
+        contacts:contact_id (
+          id,
+          name,
+          email,
+          phone,
+          company
+        )
+      `)
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionError) throw sessionError;
+
+    // Get messages for this session
+    const { data: messagesData, error: messagesError } = await supabaseAdmin
       .from('chat_messages')
       .select('role, content, model, created_at')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
-    return NextResponse.json({ messages: data ?? [] });
+    if (messagesError) throw messagesError;
+
+    return NextResponse.json({ 
+      session: sessionData,
+      messages: messagesData ?? [] 
+    });
   } catch (e) {
-    return NextResponse.json({ error: e.message || 'unknown error' }, { status: 400 });
+    console.error('Session messages API error:', e);
+    return NextResponse.json({ error: e.message || 'unknown error' }, { status: 500 });
   }
 }
