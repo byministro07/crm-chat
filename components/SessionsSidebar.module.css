@@ -1,3 +1,4 @@
+/* components/SessionsSidebar.module.css */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -23,6 +24,33 @@
   font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
+}
+
+.closeButton {
+  display: none;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .closeButton {
+    display: flex;
+  }
 }
 
 .sessionsList {
