@@ -4,16 +4,16 @@
 import { useState, useEffect } from 'react';
 import ContactSearch from '@/components/ContactSearch';
 import ChatBox from '@/components/ChatBox';
-import ModelPicker from '@/components/ModelPicker';
 import SessionsSidebar from '@/components/SessionsSidebar';
 import styles from './page.module.css';
 
 export default function Home() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [sessionId, setSessionId] = useState(null);
-  const [modelTier, setModelTier] = useState('medium');
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false); // Default closed
   const [loading, setLoading] = useState(false);
+  const [thinkHarder, setThinkHarder] = useState(false);
+  const [showContactSearch, setShowContactSearch] = useState(false);
 
   // Load session from window if exists
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function Home() {
         body: JSON.stringify({ 
           contactId,
           title: `Chat - ${new Date().toLocaleDateString()}`,
-          modelTier 
+          modelTier: thinkHarder ? 'high' : 'medium'
         })
       });
 
@@ -54,6 +54,7 @@ export default function Home() {
 
   const handleContactSelect = async (contact) => {
     setSelectedContact(contact);
+    setShowContactSearch(false);
     await createNewSession(contact.id);
   };
 
@@ -68,7 +69,6 @@ export default function Home() {
       const res = await fetch(`/api/chat/session/messages?sessionId=${newSessionId}`);
       const data = await res.json();
       if (data.session?.contact_id) {
-        // Optionally fetch full contact details
         setSelectedContact({ id: data.session.contact_id });
       }
     } catch (err) {
@@ -79,6 +79,7 @@ export default function Home() {
   const handleNewChat = () => {
     setSelectedContact(null);
     setSessionId(null);
+    setShowContactSearch(false);
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
@@ -86,85 +87,103 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      {showSidebar && (
+      {/* Sidebar */}
+      <div className={`${styles.sidebar} ${showSidebar ? styles.sidebarOpen : ''}`}>
         <SessionsSidebar
           currentSessionId={sessionId}
           onSessionSelect={handleSessionSelect}
           contactId={selectedContact?.id}
           onNewChat={handleNewChat}
         />
-      )}
+      </div>
 
-      <div className={styles.mainContent}>
+      {/* Main Content */}
+      <div className={styles.main}>
+        {/* Header */}
         <header className={styles.header}>
-          <button
-            className={styles.sidebarToggle}
-            onClick={() => setShowSidebar(!showSidebar)}
-            title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
-          >
-            {showSidebar ? '◀' : '▶'}
-          </button>
+          <div className={styles.headerLeft}>
+            <button
+              className={styles.menuButton}
+              onClick={() => setShowSidebar(!showSidebar)}
+              aria-label="Toggle sidebar"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M2.5 7.5H17.5M2.5 12.5H17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
 
-          <h1 className={styles.title}>CRM Chat</h1>
-
-          <div className={styles.headerControls}>
-            <ModelPicker
-              value={modelTier}
-              onChange={setModelTier}
-            />
-            
             <button
               className={styles.newChatButton}
               onClick={handleNewChat}
-              disabled={!selectedContact}
+              aria-label="New chat"
             >
-              New Chat
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 3V17M3 10H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>New chat</span>
             </button>
           </div>
-        </header>
 
-        <div className={styles.searchSection}>
-          <ContactSearch onSelect={handleContactSelect} />
-          {selectedContact && (
-            <div className={styles.selectedContact}>
-              <span className={styles.contactName}>
-                {selectedContact.name || selectedContact.email}
-              </span>
-              {selectedContact.company && (
-                <span className={styles.contactCompany}>
-                  {selectedContact.company}
-                </span>
-              )}
+          <div className={styles.headerCenter}>
+            {selectedContact ? (
+              <>
+                <span className={styles.contactName}>{selectedContact.name || 'Unknown'}</span>
+                <span className={styles.contactEmail}>{selectedContact.email}</span>
+              </>
+            ) : (
+              <span className={styles.selectPrompt}>Select a customer</span>
+            )}
+          </div>
+
+          <div className={styles.headerRight}>
+            <button
+              className={styles.searchButton}
+              onClick={() => setShowContactSearch(!showContactSearch)}
+              aria-label="Search contacts"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M13 13L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Contact Search Dropdown */}
+          {showContactSearch && (
+            <div className={styles.searchDropdown}>
+              <ContactSearch 
+                onSelect={handleContactSelect}
+                autoFocus={true}
+                showRecent={true}
+              />
             </div>
           )}
-        </div>
+        </header>
 
-        <main className={styles.chatSection}>
+        {/* Chat Area */}
+        <main className={styles.chatArea}>
           {!selectedContact ? (
             <div className={styles.emptyState}>
-              <h2>Welcome to CRM Chat</h2>
-              <p>Search and select a customer above to start a conversation</p>
-              <p className={styles.hint}>
-                💡 Ask questions about orders, shipping, messages, or get summaries
-              </p>
+              <div className={styles.emptyIcon}>💬</div>
+              <h2>Start a conversation</h2>
+              <p>Click the search icon above to find a customer</p>
             </div>
           ) : loading ? (
-            <div className={styles.loading}>Creating session...</div>
+            <div className={styles.loadingState}>
+              <div className={styles.spinner}></div>
+              <p>Setting up chat...</p>
+            </div>
           ) : (
             <ChatBox
               contactId={selectedContact.id}
               sessionId={sessionId}
-              modelTier={modelTier}
+              modelTier={thinkHarder ? 'high' : 'medium'}
+              thinkHarder={thinkHarder}
+              setThinkHarder={setThinkHarder}
+              selectedContact={selectedContact}
             />
           )}
         </main>
-
-        <footer className={styles.footer}>
-          <div className={styles.stats}>
-            Model: {modelTier} | 
-            Session: {sessionId ? sessionId.substring(0, 8) : 'none'}
-          </div>
-        </footer>
       </div>
     </div>
   );

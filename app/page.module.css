@@ -1,0 +1,214 @@
+.container {
+  display: flex;
+  height: 100vh;
+  background: #ffffff;
+  position: relative;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: -260px;
+  top: 0;
+  width: 260px;
+  height: 100vh;
+  background: #f7f7f8;
+  border-right: 1px solid #e5e5e7;
+  transition: left 0.2s ease;
+  z-index: 100;
+}
+
+.sidebarOpen {
+  left: 0;
+}
+
+/* Main Content */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e5e5e7;
+  background: #ffffff;
+  position: relative;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menuButton {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.menuButton:hover {
+  background: #f0f0f0;
+}
+
+.newChatButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.newChatButton:hover {
+  background: #f0f0f0;
+}
+
+.newChatButton span {
+  font-weight: 500;
+}
+
+.headerCenter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.contactName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.contactEmail {
+  font-size: 14px;
+  color: #8e8e93;
+}
+
+.selectPrompt {
+  font-size: 15px;
+  color: #8e8e93;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+.searchButton {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.searchButton:hover {
+  background: #f0f0f0;
+}
+
+/* Search Dropdown */
+.searchDropdown {
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  margin-top: 8px;
+  width: 320px;
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  padding: 12px;
+  z-index: 200;
+}
+
+/* Chat Area */
+.chatArea {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Empty State */
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8e8e93;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.emptyState h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.emptyState p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Loading State */
+.loadingState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #666;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingState p {
+  color: #8e8e93;
+  font-size: 14px;
+}
