@@ -195,15 +195,25 @@ export default function ChatBox({
       {/* Input Area */}
       <div className={styles.inputContainer}>
         <div className={styles.inputWrapper}>
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={contactId ? "Type your message..." : "Select a contact first"}
             disabled={!contactId || loading}
             className={styles.input}
+            rows={1}
+            style={{ 
+              resize: 'none',
+              overflow: 'hidden',
+              minHeight: '20px',
+              maxHeight: '120px'
+            }}
+            onInput={(e) => {
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
           />
           
           <button
@@ -212,14 +222,15 @@ export default function ChatBox({
             disabled={!contactId}
             title="Use advanced model for this message"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2C9.5 2 10.5 2.5 11 3.5C11.2 4 11 4.5 10.5 5C11 5.2 11.5 5.8 11.5 6.5C11.5 7.2 11 7.8 10.2 8C11 8.2 11.5 8.8 11.5 9.5C11.5 10.5 10.5 11 9 11H7C6 11 5.5 10.5 5.5 9.5C5.5 8.8 6 8.2 6.8 8C6 7.8 5.5 7.2 5.5 6.5C5.5 5.8 6 5.2 6.5 5C6 4.5 5.8 4 6 3.5C6.5 2.5 7.5 2 8 2Z" 
-                fill="currentColor" opacity="0.8"/>
-              <circle cx="8" cy="4" r="0.8" fill="currentColor"/>
-              <circle cx="6.5" cy="6" r="0.6" fill="currentColor"/>
-              <circle cx="9.5" cy="6" r="0.6" fill="currentColor"/>
-              <path d="M6.5 8.5C6.5 8.5 7 9 8 9C9 9 9.5 8.5 9.5 8.5" 
-                stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 12V3.33"/>
+              <path d="M10 8.67a2.78 2.78 0 0 1-2-2.67 2.78 2.78 0 0 1-2 2.67"/>
+              <path d="M11.73 4.33A2 2 0 1 0 8 3.33a2 2 0 1 0-3.73 1"/>
+              <path d="M11.998 3.42a2.67 2.67 0 0 1 1.684 3.85"/>
+              <path d="M12 12a2.67 2.67 0 0 0 1.33-4.98"/>
+              <path d="M13.31 11.66A2.67 2.67 0 1 1 8 12a2.67 2.67 0 1 1-5.31-.34"/>
+              <path d="M4 12a2.67 2.67 0 0 1-1.33-4.98"/>
+              <path d="M4.002 3.42a2.67 2.67 0 0 0-1.684 3.85"/>
             </svg>
             <span>Genius Mode</span>
           </button>
