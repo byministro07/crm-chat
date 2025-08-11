@@ -1,12 +1,19 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    })
+  : null;
 
 export async function POST(request) {
   try {
-    // Check if Supabase is initialized
-    if (!supabaseAdmin) {
-      console.error('Supabase Admin not initialized');
+    if (!supabase) {
       return Response.json(
-        { error: 'Database connection not configured' },
+        { error: 'Database configuration error' },
         { status: 500 }
       );
     }
@@ -18,7 +25,7 @@ export async function POST(request) {
     }
 
     // Get contact details
-    const { data: contact } = await supabaseAdmin
+    const { data: contact } = await supabase
       .from('contacts')
       .select('name, email')
       .eq('id', contactId)
@@ -26,7 +33,7 @@ export async function POST(request) {
 
     let title = `${contact?.name || 'Unknown'}`;
 
-    // If we have a first message, generate AI summary
+    // Generate AI summary if we have a first message
     if (firstMessage && process.env.OPENROUTER_API_KEY) {
       try {
         const summaryResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -36,11 +43,11 @@ export async function POST(request) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-5-nano',
+            model: 'openai/gpt-4o-mini', // Use a real model
             messages: [
               {
                 role: 'system',
-                content: 'Generate a 3-6 word summary of this customer question. Be specific and concise. Examples: "shipping address update request", "order status inquiry", "refund processing question", "product availability check"'
+                content: 'Generate a 3-6 word summary of this customer question. Be specific and concise. Examples: "shipping address update request", "order status inquiry", "refund processing question"'
               },
               {
                 role: 'user',
@@ -65,7 +72,7 @@ export async function POST(request) {
     }
 
     // Create the session
-    const { data: session, error } = await supabaseAdmin
+    const { data: session, error } = await supabase
       .from('chat_sessions')
       .insert({
         contact_id: contactId,

@@ -1,101 +1,105 @@
-// app/api/chat/sessions/route.js
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@supabase/supabase-js';
 
-// GET all sessions for a contact (or all if no contactId)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    })
+  : null;
+
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const contactId = searchParams.get('contactId');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    
-    let query = supabaseAdmin
+    if (!supabase) {
+      return Response.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
+    // Get ALL sessions, not filtered by contact
+    const { data: sessions, error } = await supabase
       .from('chat_sessions')
       .select(`
-        id,
-        contact_id,
-        title,
-        model_tier,
-        created_at,
-        updated_at,
-        contacts!inner(name, email, company)
+        *,
+        contacts:contact_id (
+          id,
+          name,
+          email
+        )
       `)
       .order('updated_at', { ascending: false })
-      .limit(limit);
-    
-    if (contactId) {
-      query = query.eq('contact_id', contactId);
-    }
-    
-    const { data, error } = await query;
-    
+      .limit(50);
+
     if (error) {
-      console.error('Error fetching sessions:', error);
-      return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
+      console.error('Sessions fetch error:', error);
+      throw error;
     }
-    
-    return NextResponse.json({ sessions: data || [] });
-  } catch (err) {
-    console.error('Sessions fetch error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+    return Response.json({ sessions: sessions || [] });
+  } catch (error) {
+    console.error('Sessions API error:', error);
+    return Response.json(
+      { error: error.message || 'Failed to fetch sessions' },
+      { status: 500 }
+    );
   }
 }
 
-// PATCH to rename a session
 export async function PATCH(request) {
   try {
-    const body = await request.json();
-    const { sessionId, title } = body;
-    
-    if (!sessionId || !title) {
-      return NextResponse.json({ error: 'sessionId and title required' }, { status: 400 });
+    if (!supabase) {
+      return Response.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
     }
-    
-    const { data, error } = await supabaseAdmin
+
+    const { sessionId, title } = await request.json();
+
+    const { error } = await supabase
       .from('chat_sessions')
-      .update({ 
-        title,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', sessionId)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error updating session:', error);
-      return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
-    }
-    
-    return NextResponse.json({ session: data });
-  } catch (err) {
-    console.error('Session update error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+      .update({ title, updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+
+    if (error) throw error;
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error('Session update error:', error);
+    return Response.json(
+      { error: error.message || 'Failed to update session' },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE a session
 export async function DELETE(request) {
   try {
+    if (!supabase) {
+      return Response.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    
-    if (!sessionId) {
-      return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
-    }
-    
-    const { error } = await supabaseAdmin
+
+    const { error } = await supabase
       .from('chat_sessions')
       .delete()
       .eq('id', sessionId);
-    
-    if (error) {
-      console.error('Error deleting session:', error);
-      return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 });
-    }
-    
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Session delete error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+    if (error) throw error;
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error('Session delete error:', error);
+    return Response.json(
+      { error: error.message || 'Failed to delete session' },
+      { status: 500 }
+    );
   }
 }

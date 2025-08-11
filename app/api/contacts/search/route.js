@@ -1,75 +1,59 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Use YOUR environment variable names
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    })
+  : null;
 
 export async function GET(request) {
-  if (!supabaseAdmin) {
-    return Response.json(
-      { error: 'Database connection not configured' },
-      { status: 500 }
-    );
-  }
-
-  const { searchParams } = new URL(request.url);
-  const q = searchParams.get('q') || '';
-  const limit = parseInt(searchParams.get('limit')) || 20;
-
   try {
-    let query;
+    if (!supabase) {
+      console.error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE');
+      return Response.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const q = searchParams.get('q') || '';
+    const limit = parseInt(searchParams.get('limit')) || 20;
 
     if (!q) {
-      // Get recent contacts based on conversation activity
-      const { data: recentConversations } = await supabaseAdmin
-        .from('conversations')
-        .select('contact_id, occurred_at')
-        .order('occurred_at', { ascending: false })
-        .limit(100);
+      // Get recent contacts based on last_activity_at
+      const { data: contacts, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('last_activity_at', { ascending: false, nullsFirst: false })
+        .limit(limit);
 
-      // Get unique contact IDs in order
-      const contactIds = [];
-      const seen = new Set();
-      for (const conv of recentConversations || []) {
-        if (conv.contact_id && !seen.has(conv.contact_id)) {
-          seen.add(conv.contact_id);
-          contactIds.push(conv.contact_id);
-          if (contactIds.length >= limit) break;
-        }
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
       }
 
-      if (contactIds.length === 0) {
-        // Fallback to contacts with last_activity_at
-        query = supabaseAdmin
-          .from('contacts')
-          .select('*')
-          .order('last_activity_at', { ascending: false, nullsFirst: false })
-          .limit(limit);
-      } else {
-        // Get contacts in the order of recent activity
-        const { data: contacts } = await supabaseAdmin
-          .from('contacts')
-          .select('*')
-          .in('id', contactIds);
-
-        // Sort contacts to match the order of contactIds
-        const sortedContacts = contactIds.map(id => 
-          contacts?.find(c => c.id === id)
-        ).filter(Boolean);
-
-        return Response.json(sortedContacts);
-      }
+      return Response.json(contacts || []);
     } else {
       // Search by name or email
-      query = supabaseAdmin
+      const { data: contacts, error } = await supabase
         .from('contacts')
         .select('*')
         .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
         .order('last_activity_at', { ascending: false, nullsFirst: false })
         .limit(limit);
+
+      if (error) {
+        console.error('Search error:', error);
+        throw error;
+      }
+
+      return Response.json(contacts || []);
     }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return Response.json(data || []);
   } catch (error) {
     console.error('Contact search error:', error);
     return Response.json(
