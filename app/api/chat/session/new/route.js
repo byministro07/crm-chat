@@ -1,14 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Use NEXT_PUBLIC for URL since it needs to be available at build time
-// Use SUPABASE_SERVICE_KEY for the service key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || ''
-);
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request) {
   try {
+    // Check if Supabase is initialized
+    if (!supabaseAdmin) {
+      console.error('Supabase Admin not initialized');
+      return Response.json(
+        { error: 'Database connection not configured' },
+        { status: 500 }
+      );
+    }
+
     const { contactId, firstMessage, modelTier } = await request.json();
 
     if (!contactId) {
@@ -16,7 +18,7 @@ export async function POST(request) {
     }
 
     // Get contact details
-    const { data: contact } = await supabase
+    const { data: contact } = await supabaseAdmin
       .from('contacts')
       .select('name, email')
       .eq('id', contactId)
@@ -25,7 +27,7 @@ export async function POST(request) {
     let title = `${contact?.name || 'Unknown'}`;
 
     // If we have a first message, generate AI summary
-    if (firstMessage) {
+    if (firstMessage && process.env.OPENROUTER_API_KEY) {
       try {
         const summaryResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -59,12 +61,11 @@ export async function POST(request) {
         }
       } catch (err) {
         console.error('Failed to generate summary:', err);
-        // Fall back to basic title if AI fails
       }
     }
 
     // Create the session
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseAdmin
       .from('chat_sessions')
       .insert({
         contact_id: contactId,

@@ -1,0 +1,247 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #ffffff;
+}
+
+/* Messages Container */
+.messagesContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.emptyMessages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #8e8e93;
+}
+
+.emptyMessages p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.hint {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Messages List */
+.messagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.messageWrapper {
+  display: flex;
+}
+
+.userMessage {
+  justify-content: flex-end;
+}
+
+.assistantMessage {
+  justify-content: flex-start;
+}
+
+.message {
+  max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.messageContent {
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.userMessage .messageContent {
+  background: #007aff;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.assistantMessage .messageContent {
+  background: #f0f0f1;
+  color: #1a1a1a;
+  border-bottom-left-radius: 4px;
+}
+
+.messageModel {
+  font-size: 11px;
+  color: #8e8e93;
+  padding: 0 8px;
+}
+
+/* Loading Message */
+.loadingMessage {
+  padding: 10px 16px;
+  background: #f0f0f1;
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #8e8e93;
+  border-radius: 50%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Input Container */
+.inputContainer {
+  border-top: 1px solid #e5e5e7;
+  background: #ffffff;
+  padding: 12px 20px 20px;
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.input {
+  flex: 1;
+  padding: 12px 16px;
+  padding-right: 120px;
+  border: 1px solid #e5e5e7;
+  border-radius: 24px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  background: #f7f7f8;
+}
+
+.input:focus {
+  border-color: #007aff;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Think Harder Button */
+.thinkButton {
+  position: absolute;
+  right: 52px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: #8e8e93;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 12px;
+}
+
+.thinkButton:hover:not(:disabled) {
+  background: #f0f0f1;
+  color: #1a1a1a;
+}
+
+.thinkButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.thinkActive {
+  background: #007aff !important;
+  color: white !important;
+}
+
+/* Send Button */
+.sendButton {
+  position: absolute;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #0051d5;
+  transform: scale(1.05);
+}
+
+.sendButton:disabled {
+  background: #c8c8ca;
+  cursor: not-allowed;
+}
+
+.sendButton svg {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .message {
+    max-width: 85%;
+  }
+  
+  .thinkButton span {
+    display: none;
+  }
+  
+  .thinkButton {
+    right: 48px;
+    padding: 6px;
+  }
+}

@@ -1,11 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || ''
-);
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request) {
+  if (!supabaseAdmin) {
+    return Response.json(
+      { error: 'Database connection not configured' },
+      { status: 500 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q') || '';
   const limit = parseInt(searchParams.get('limit')) || 20;
@@ -15,7 +17,7 @@ export async function GET(request) {
 
     if (!q) {
       // Get recent contacts based on conversation activity
-      const { data: recentConversations } = await supabase
+      const { data: recentConversations } = await supabaseAdmin
         .from('conversations')
         .select('contact_id, occurred_at')
         .order('occurred_at', { ascending: false })
@@ -34,14 +36,14 @@ export async function GET(request) {
 
       if (contactIds.length === 0) {
         // Fallback to contacts with last_activity_at
-        query = supabase
+        query = supabaseAdmin
           .from('contacts')
           .select('*')
           .order('last_activity_at', { ascending: false, nullsFirst: false })
           .limit(limit);
       } else {
         // Get contacts in the order of recent activity
-        const { data: contacts } = await supabase
+        const { data: contacts } = await supabaseAdmin
           .from('contacts')
           .select('*')
           .in('id', contactIds);
@@ -55,7 +57,7 @@ export async function GET(request) {
       }
     } else {
       // Search by name or email
-      query = supabase
+      query = supabaseAdmin
         .from('contacts')
         .select('*')
         .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
