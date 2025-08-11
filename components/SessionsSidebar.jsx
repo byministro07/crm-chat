@@ -1,4 +1,3 @@
-// Replace the entire component with this:
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +6,6 @@ import styles from './SessionsSidebar.module.css';
 export default function SessionsSidebar({ 
   currentSessionId, 
   onSessionSelect, 
-  contactId,
   onNewChat,
   onClose 
 }) {
@@ -16,18 +14,20 @@ export default function SessionsSidebar({
 
   useEffect(() => {
     fetchSessions();
-  }, [contactId, currentSessionId]);
+    // Set up polling for new sessions
+    const interval = setInterval(fetchSessions, 5000);
+    return () => clearInterval(interval);
+  }, [currentSessionId]);
 
   const fetchSessions = async () => {
     try {
-      setLoading(true);
-      const params = contactId ? `?contactId=${contactId}` : '';
-      const res = await fetch(`/api/chat/sessions${params}`);
+      // Always fetch ALL sessions, no filtering
+      const res = await fetch('/api/chat/sessions');
       const data = await res.json();
       setSessions(data.sessions || []);
+      setLoading(false);
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
-    } finally {
       setLoading(false);
     }
   };
@@ -47,12 +47,6 @@ export default function SessionsSidebar({
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
-  };
-
-  const generateTitle = (session) => {
-    if (session.title) return session.title;
-    const contact = session.contacts;
-    return `${contact?.name || 'Unknown'} - ${formatDate(session.created_at)}`;
   };
 
   if (loading) {
@@ -84,12 +78,14 @@ export default function SessionsSidebar({
               }`}
               onClick={() => {
                 onSessionSelect(session.id);
-                onClose?.();
+                if (window.innerWidth < 768) {
+                  onClose?.();
+                }
               }}
             >
               <div className={styles.sessionContent}>
                 <div className={styles.sessionTitle}>
-                  {generateTitle(session)}
+                  {session.title || 'Untitled Chat'}
                 </div>
                 <div className={styles.sessionMeta}>
                   {formatDate(session.updated_at)}

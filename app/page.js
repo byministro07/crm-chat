@@ -9,8 +9,7 @@ import styles from './page.module.css';
 export default function Home() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [sessionId, setSessionId] = useState(null);
-  const [showSidebar, setShowSidebar] = useState(false); // Default closed
-  const [loading, setLoading] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [thinkHarder, setThinkHarder] = useState(false);
   const [showContactSearch, setShowContactSearch] = useState(false);
 
@@ -18,6 +17,8 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.__SESSION_ID) {
       setSessionId(window.__SESSION_ID);
+      // Load the contact for this session
+      loadSessionContact(window.__SESSION_ID);
     }
   }, []);
 
@@ -34,40 +35,31 @@ export default function Home() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showContactSearch]);
 
-  const createNewSession = async (contactId) => {
-    if (!contactId) return;
-    
-    setLoading(true);
+  const loadSessionContact = async (sessionId) => {
     try {
-      const res = await fetch('/api/chat/session/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          contactId,
-          title: `Chat - ${new Date().toLocaleDateString()}`,
-          modelTier: thinkHarder ? 'high' : 'medium'
-        })
-      });
-
-      if (!res.ok) throw new Error('Failed to create session');
-
+      const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
       const data = await res.json();
-      setSessionId(data.sessionId);
-      
-      if (typeof window !== 'undefined') {
-        window.__SESSION_ID = data.sessionId;
+      if (data.session?.contact_id) {
+        // Get full contact details
+        const contactRes = await fetch(`/api/contacts/${data.session.contact_id}`);
+        if (contactRes.ok) {
+          const contact = await contactRes.json();
+          setSelectedContact(contact);
+        }
       }
     } catch (err) {
-      console.error('Error creating session:', err);
-    } finally {
-      setLoading(false);
+      console.error('Error loading session contact:', err);
     }
   };
 
   const handleContactSelect = async (contact) => {
     setSelectedContact(contact);
     setShowContactSearch(false);
-    await createNewSession(contact.id);
+    // Don't create session yet - wait for first message
+    setSessionId(null);
+    if (typeof window !== 'undefined') {
+      delete window.__SESSION_ID;
+    }
   };
 
   const handleSessionSelect = async (newSessionId) => {
@@ -75,22 +67,7 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       window.__SESSION_ID = newSessionId;
     }
-
-    // Load session details to get contact
-    try {
-      const res = await fetch(`/api/chat/session/messages?sessionId=${newSessionId}`);
-      const data = await res.json();
-      if (data.session?.contact_id) {
-        // Get full contact details
-        const contactRes = await fetch(`/api/contacts/search?q=${data.session.contact_id}`);
-        const contacts = await contactRes.json();
-        if (contacts && contacts.length > 0) {
-          setSelectedContact(contacts[0]);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading session:', err);
-    }
+    await loadSessionContact(newSessionId);
   };
 
   const handleNewChat = () => {
@@ -99,6 +76,14 @@ export default function Home() {
     setShowContactSearch(false);
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
+    }
+  };
+
+  // This will be called by ChatBox when first message is sent
+  const handleSessionCreated = (newSessionId) => {
+    setSessionId(newSessionId);
+    if (typeof window !== 'undefined') {
+      window.__SESSION_ID = newSessionId;
     }
   };
 
@@ -114,20 +99,9 @@ export default function Home() {
       
       {/* Sidebar */}
       <div className={`${styles.sidebar} ${showSidebar ? styles.sidebarOpen : ''}`}>
-        <button
-          className={styles.sidebarClose}
-          onClick={() => setShowSidebar(false)}
-          aria-label="Close sidebar"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M6 6L14 14M6 14L14 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </button>
-        
         <SessionsSidebar
           currentSessionId={sessionId}
           onSessionSelect={handleSessionSelect}
-          contactId={selectedContact?.id}
           onNewChat={handleNewChat}
           onClose={() => setShowSidebar(false)}
         />
@@ -208,11 +182,6 @@ export default function Home() {
               <h2>Start a conversation</h2>
               <p>Click the search icon above to find a customer</p>
             </div>
-          ) : loading ? (
-            <div className={styles.loadingState}>
-              <div className={styles.spinner}></div>
-              <p>Setting up chat...</p>
-            </div>
           ) : (
             <ChatBox
               contactId={selectedContact.id}
@@ -221,6 +190,7 @@ export default function Home() {
               thinkHarder={thinkHarder}
               setThinkHarder={setThinkHarder}
               selectedContact={selectedContact}
+              onSessionCreated={handleSessionCreated}
             />
           )}
         </main>
