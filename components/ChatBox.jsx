@@ -1,3 +1,4 @@
+// components/ChatBox.jsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -212,11 +213,15 @@ export default function ChatBox({
             title="Use advanced model for this message"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1C6.5 1 5.5 2 5.5 3.5C5.5 4.5 6 5 6.5 5.5C6 5.5 5.5 6 5.5 6.5C5.5 7 5.7 7.3 6 7.5C5.5 7.7 5 8.2 5 9C5 10 6 10.5 7 10.5H8V12M8 14V15" 
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M8 2C9.5 2 10.5 2.5 11 3.5C11.2 4 11 4.5 10.5 5C11 5.2 11.5 5.8 11.5 6.5C11.5 7.2 11 7.8 10.2 8C11 8.2 11.5 8.8 11.5 9.5C11.5 10.5 10.5 11 9 11H7C6 11 5.5 10.5 5.5 9.5C5.5 8.8 6 8.2 6.8 8C6 7.8 5.5 7.2 5.5 6.5C5.5 5.8 6 5.2 6.5 5C6 4.5 5.8 4 6 3.5C6.5 2.5 7.5 2 8 2Z" 
+                fill="currentColor" opacity="0.8"/>
+              <circle cx="8" cy="4" r="0.8" fill="currentColor"/>
+              <circle cx="6.5" cy="6" r="0.6" fill="currentColor"/>
+              <circle cx="9.5" cy="6" r="0.6" fill="currentColor"/>
+              <path d="M6.5 8.5C6.5 8.5 7 9 8 9C9 9 9.5 8.5 9.5 8.5" 
+                stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
             </svg>
-            <span>Think harder</span>
+            <span>Genius Mode</span>
           </button>
 
           <button
