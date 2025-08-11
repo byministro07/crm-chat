@@ -1,4 +1,3 @@
-// app/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,6 +20,19 @@ export default function Home() {
       setSessionId(window.__SESSION_ID);
     }
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showContactSearch && !e.target.closest(`.${styles.searchDropdown}`) && 
+          !e.target.closest(`.${styles.searchButton}`)) {
+        setShowContactSearch(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showContactSearch]);
 
   const createNewSession = async (contactId) => {
     if (!contactId) return;
@@ -69,7 +81,12 @@ export default function Home() {
       const res = await fetch(`/api/chat/session/messages?sessionId=${newSessionId}`);
       const data = await res.json();
       if (data.session?.contact_id) {
-        setSelectedContact({ id: data.session.contact_id });
+        // Get full contact details
+        const contactRes = await fetch(`/api/contacts/search?q=${data.session.contact_id}`);
+        const contacts = await contactRes.json();
+        if (contacts && contacts.length > 0) {
+          setSelectedContact(contacts[0]);
+        }
       }
     } catch (err) {
       console.error('Error loading session:', err);
@@ -87,18 +104,37 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
+      {/* Sidebar Overlay for mobile */}
+      {showSidebar && (
+        <div 
+          className={styles.sidebarOverlay} 
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+      
       {/* Sidebar */}
       <div className={`${styles.sidebar} ${showSidebar ? styles.sidebarOpen : ''}`}>
+        <button
+          className={styles.sidebarClose}
+          onClick={() => setShowSidebar(false)}
+          aria-label="Close sidebar"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M6 6L14 14M6 14L14 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
+        
         <SessionsSidebar
           currentSessionId={sessionId}
           onSessionSelect={handleSessionSelect}
           contactId={selectedContact?.id}
           onNewChat={handleNewChat}
+          onClose={() => setShowSidebar(false)}
         />
       </div>
 
-      {/* Main Content */}
-      <div className={styles.main}>
+      {/* Main Content - shifts when sidebar opens */}
+      <div className={`${styles.main} ${showSidebar ? styles.mainWithSidebar : ''}`}>
         {/* Header */}
         <header className={styles.header}>
           <div className={styles.headerLeft}>
@@ -106,9 +142,12 @@ export default function Home() {
               className={styles.menuButton}
               onClick={() => setShowSidebar(!showSidebar)}
               aria-label="Toggle sidebar"
+              title="Show chat history"
             >
+              {/* Split screen icon */}
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M2.5 7.5H17.5M2.5 12.5H17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <rect x="3" y="4" width="6" height="12" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                <rect x="11" y="4" width="6" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="currentColor" opacity="0.2"/>
               </svg>
             </button>
 
@@ -117,8 +156,9 @@ export default function Home() {
               onClick={handleNewChat}
               aria-label="New chat"
             >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 3V17M3 10H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              {/* Pencil/Edit icon */}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M12.854 0.146a0.5 0.5 0 0 1 0.707 0l2.293 2.293a0.5 0.5 0 0 1 0 0.707l-9 9a0.5 0.5 0 0 1-0.253 0.143l-4 1a0.5 0.5 0 0 1-0.609-0.609l1-4a0.5 0.5 0 0 1 0.143-0.253l9-9z" stroke="currentColor" strokeWidth="1.2"/>
               </svg>
               <span>New chat</span>
             </button>
