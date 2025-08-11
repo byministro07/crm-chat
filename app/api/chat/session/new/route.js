@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Use NEXT_PUBLIC for URL since it needs to be available at build time
+// Use SUPABASE_SERVICE_KEY for the service key
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
 );
 
 export async function POST(request) {
