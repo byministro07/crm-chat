@@ -49,6 +49,18 @@ export default function SessionsSidebar({
     }
   };
 
+  // Extract title description (remove contact name if it's in the title)
+  const getSessionDescription = (session) => {
+    if (!session.title) return 'New conversation';
+    
+    const contactName = session.contacts?.name;
+    if (contactName && session.title.startsWith(contactName)) {
+      // Remove contact name and dash from title
+      return session.title.replace(`${contactName} - `, '').trim();
+    }
+    return session.title;
+  };
+
   if (loading) {
     return (
       <div className={styles.sidebar}>
@@ -85,7 +97,10 @@ export default function SessionsSidebar({
             >
               <div className={styles.sessionContent}>
                 <div className={styles.sessionTitle}>
-                  {session.title || 'Untitled Chat'}
+                  {session.contacts?.name || 'Unknown Contact'}
+                </div>
+                <div className={styles.sessionDescription}>
+                  {getSessionDescription(session)}
                 </div>
                 <div className={styles.sessionMeta}>
                   {formatDate(session.updated_at)}
