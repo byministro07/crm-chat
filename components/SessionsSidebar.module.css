@@ -17,6 +17,7 @@
   height: 60px; /* Same height as main header */
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .header h3 {
@@ -28,10 +29,7 @@
 
 .closeButton {
   display: none;
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-left: auto;
   width: 32px;
   height: 32px;
   border: none;
