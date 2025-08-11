@@ -1,7 +1,6 @@
 // app/api/ingest/conversation/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getOrCreateContactByGHL } from '@/lib/contacts';
 
 export async function POST(req) {
   try {
@@ -14,8 +13,71 @@ export async function POST(req) {
     if (!ghl_contact_id) return NextResponse.json({ error: 'ghl_contact_id required' }, { status: 400 });
     if (!message?.ghl_message_id) return NextResponse.json({ error: 'message.ghl_message_id required' }, { status: 400 });
 
-    const contactId = await getOrCreateContactByGHL(ghl_contact_id, contact);
+    let contactId;
+    
+    // Check if contact data was actually provided (not empty object)
+    const hasContactData = contact && Object.keys(contact).length > 0 && contact.name;
+    
+    if (hasContactData) {
+      // Contact data provided - create or update the contact
+      const { data: existingContact } = await supabaseAdmin
+        .from('contacts')
+        .select('id')
+        .eq('external_id', ghl_contact_id)
+        .single();
 
+      if (existingContact) {
+        // Update existing contact
+        const { data, error } = await supabaseAdmin
+          .from('contacts')
+          .update({
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            company: contact.company,
+            updated_at: new Date().toISOString()
+          })
+          .eq('external_id', ghl_contact_id)
+          .select('id')
+          .single();
+        
+        if (error) throw error;
+        contactId = data.id;
+      } else {
+        // Create new contact
+        const { data, error } = await supabaseAdmin
+          .from('contacts')
+          .insert({
+            external_id: ghl_contact_id,
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            company: contact.company
+          })
+          .select('id')
+          .single();
+        
+        if (error) throw error;
+        contactId = data.id;
+      }
+    } else {
+      // No contact data - just find existing contact
+      const { data: existingContact, error } = await supabaseAdmin
+        .from('contacts')
+        .select('id')
+        .eq('external_id', ghl_contact_id)
+        .single();
+      
+      if (error || !existingContact) {
+        return NextResponse.json({ 
+          error: `Contact not found for GHL ID: ${ghl_contact_id}. Import contacts first.` 
+        }, { status: 400 });
+      }
+      
+      contactId = existingContact.id;
+    }
+
+    // Now insert the conversation
     const payload = {
       contact_id: contactId,
       ghl_contact_id,
