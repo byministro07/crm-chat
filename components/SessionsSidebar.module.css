@@ -138,3 +138,39 @@
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   }
 }
+
+/* Delete Button */
+.sessionItem {
+  position: relative;
+}
+
+.deleteButton {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e5e7;
+  border-radius: 6px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.deleteButton:hover {
+  background: #ff3b30;
+  border-color: #ff3b30;
+  color: white;
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* Adjust content padding when delete button is visible */
+.sessionContent {
+  padding-right: 40px;
+}

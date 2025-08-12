@@ -12,6 +12,7 @@ export default function SessionsSidebar({
 }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hoveredSessionId, setHoveredSessionId] = useState(null);
 
   useEffect(() => {
     fetchSessions();
@@ -30,6 +31,34 @@ export default function SessionsSidebar({
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (e, sessionId, sessionTitle) => {
+    e.stopPropagation(); // Prevent session selection
+    
+    const confirmMessage = `Are you sure you want to delete this session${sessionTitle ? ` "${sessionTitle}"` : ''}?`;
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+      const res = await fetch(`/api/chat/session/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+      
+      if (res.ok) {
+        // If deleted session was current, go to new chat
+        if (sessionId === currentSessionId) {
+          onNewChat();
+        }
+        // Refresh sessions list
+        fetchSessions();
+      } else {
+        console.error('Failed to delete session');
+      }
+    } catch (err) {
+      console.error('Error deleting session:', err);
     }
   };
 
@@ -105,6 +134,8 @@ export default function SessionsSidebar({
                   onClose?.();
                 }
               }}
+              onMouseEnter={() => setHoveredSessionId(session.id)}
+              onMouseLeave={() => setHoveredSessionId(null)}
             >
               <div className={styles.sessionContent}>
                 <div className={styles.sessionTitle}>
@@ -117,6 +148,18 @@ export default function SessionsSidebar({
                   {formatDate(session.updated_at)}
                 </div>
               </div>
+              
+              {hoveredSessionId === session.id && (
+                <button
+                  className={styles.deleteButton}
+                  onClick={(e) => handleDeleteSession(e, session.id, session.contacts?.name)}
+                  aria-label="Delete session"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
+                  </svg>
+                </button>
+              )}
             </button>
           ))
         )}
