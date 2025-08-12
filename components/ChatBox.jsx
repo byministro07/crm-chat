@@ -38,6 +38,13 @@ export default function ChatBox({
     }
   }, [selectedContact]);
 
+  // Auto-focus on messages change
+  useEffect(() => {
+    if (!loading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [messages, loading, selectedContact]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
@@ -215,25 +222,43 @@ export default function ChatBox({
               e.target.style.height = e.target.scrollHeight + 'px';
             }}
           />
-          
-          <button
-            className={`${styles.thinkButton} ${thinkHarder ? styles.thinkActive : ''}`}
-            onClick={() => setThinkHarder(!thinkHarder)}
-            disabled={!contactId}
-            title="Use advanced model for this message"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 12V3.33"/>
-              <path d="M10 8.67a2.78 2.78 0 0 1-2-2.67 2.78 2.78 0 0 1-2 2.67"/>
-              <path d="M11.73 4.33A2 2 0 1 0 8 3.33a2 2 0 1 0-3.73 1"/>
-              <path d="M11.998 3.42a2.67 2.67 0 0 1 1.684 3.85"/>
-              <path d="M12 12a2.67 2.67 0 0 0 1.33-4.98"/>
-              <path d="M13.31 11.66A2.67 2.67 0 1 1 8 12a2.67 2.67 0 1 1-5.31-.34"/>
-              <path d="M4 12a2.67 2.67 0 0 1-1.33-4.98"/>
-              <path d="M4.002 3.42a2.67 2.67 0 0 0-1.684 3.85"/>
-            </svg>
-            <span>Genius Mode</span>
-          </button>
+
+          {/* Mode Toggle Switch */}
+          <div className={styles.modeToggle}>
+            <span className={`${styles.modeLabel} ${!thinkHarder ? styles.modeLabelActive : ''}`}>
+              Flash
+            </span>
+            <button
+              className={styles.toggleSwitch}
+              onClick={() => setThinkHarder(!thinkHarder)}
+              disabled={!contactId}
+              aria-label={thinkHarder ? "Switch to Flash mode" : "Switch to Genius mode"}
+            >
+              <div className={`${styles.toggleTrack} ${thinkHarder ? styles.toggleTrackActive : ''}`}>
+                <div className={`${styles.toggleThumb} ${thinkHarder ? styles.toggleThumbActive : ''}`}>
+                  {!thinkHarder ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 12V3.33"/>
+                      <path d="M10 8.67a2.78 2.78 0 0 1-2-2.67 2.78 2.78 0 0 1-2 2.67"/>
+                      <path d="M11.73 4.33A2 2 0 1 0 8 3.33a2 2 0 1 0-3.73 1"/>
+                      <path d="M11.998 3.42a2.67 2.67 0 0 1 1.684 3.85"/>
+                      <path d="M12 12a2.67 2.67 0 0 0 1.33-4.98"/>
+                      <path d="M13.31 11.66A2.67 2.67 0 1 1 8 12a2.67 2.67 0 1 1-5.31-.34"/>
+                      <path d="M4 12a2.67 2.67 0 0 1-1.33-4.98"/>
+                      <path d="M4.002 3.42a2.67 2.67 0 0 0-1.684 3.85"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </button>
+            <span className={`${styles.modeLabel} ${thinkHarder ? styles.modeLabelActive : ''}`}>
+              Genius
+            </span>
+          </div>
 
           <button
             className={styles.sendButton}
