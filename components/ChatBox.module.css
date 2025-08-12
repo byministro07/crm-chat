@@ -153,7 +153,7 @@
   color: #1a1a1a;
   font-family: inherit;
   line-height: 1.4;
-  padding-right: 180px; /* Increased for toggle space */
+  padding-right: 120px; /* Reduced since toggle is smaller */
   transition: all 0.15s ease;
 }
 
@@ -162,36 +162,12 @@
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
 }
 
-/* Mode Toggle Styles */
+/* Mode Toggle - Minimalist */
 .modeToggle {
   position: absolute;
   right: 52px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  background: #f5f5f5;
-  border-radius: 20px;
-  height: 32px;
-}
-
-.modeLabel {
-  font-size: 12px;
-  font-weight: 500;
-  color: #8e8e93;
-  transition: color 0.3s ease;
-  user-select: none;
-}
-
-.modeLabelActive {
-  color: #333;
-  font-weight: 600;
-}
-
-.toggleSwitch {
-  position: relative;
-  width: 44px;
-  height: 24px;
+  width: 52px;
+  height: 28px;
   background: none;
   border: none;
   padding: 0;
@@ -199,39 +175,38 @@
   outline: none;
 }
 
-.toggleSwitch:disabled {
+.modeToggle:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
 .toggleTrack {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #e0e0e0;
-  border-radius: 12px;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #e5e5e7;
+  border-radius: 14px;
   transition: background 0.3s ease;
 }
 
 .toggleThumb {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
   background: #FFEA00;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: #333;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .toggleThumbActive {
-  transform: translateX(20px);
+  transform: translateX(24px);
   background: #007aff;
   color: white;
 }
@@ -273,6 +248,24 @@
 @media (max-width: 768px) {
   .message {
     max-width: 85%;
+  }
+  .modeToggle {
+    width: 48px;
+    height: 26px;
+    right: 48px;
+  }
+  
+  .toggleThumb {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .toggleThumbActive {
+    transform: translateX(22px);
+  }
+  
+  .input {
+    padding-right: 110px;
   }
 }
 /*  */
