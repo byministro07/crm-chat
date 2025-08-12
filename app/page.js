@@ -81,11 +81,12 @@ export default function Home() {
     // Don't create session yet - wait for first message
     setSessionId(null);
     setCustomerStatus(null);  // Reset status
+    setStatusLoading(true);  // Show loading immediately
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
-    // Analyze status for new contact
-    await analyzeCustomerStatus(contact.id, null);
+    // Analyze status for new contact - don't await here
+    analyzeCustomerStatus(contact.id, null);
   };
 
   const handleSessionSelect = async (newSessionId) => {

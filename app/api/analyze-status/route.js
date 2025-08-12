@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function POST(request) {
   try {
     const { contactId, sessionId } = await request.json();
+    console.log('Analyzing status for:', { contactId, sessionId });
     
     // Get conversation messages
     let messages = [];
@@ -65,12 +66,15 @@ Return only the status word (PAID, ACTIVE, DORMANT, or UNSURE).`;
       return NextResponse.json({ status: 'UNSURE' });
     }
 
+    console.log('Prompt:', prompt);
     const data = await response.json();
+    console.log('AI Response:', data);
     const statusRaw = data.choices?.[0]?.message?.content?.trim().toUpperCase() || 'UNSURE';
     
     // Validate status
     const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE'];
     const finalStatus = validStatuses.includes(statusRaw) ? statusRaw : 'UNSURE';
+    console.log('Final status:', finalStatus);
     
     return NextResponse.json({ status: finalStatus });
     

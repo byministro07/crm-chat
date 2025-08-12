@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { marked } from 'marked';
 import styles from './ChatBox.module.css';
 
 export default function ChatBox({ 
@@ -14,6 +15,20 @@ export default function ChatBox({
   onSessionCreated,
   onMessageSent
 }) {
+  // Configure marked for safety
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+  });
+
+  // Safe markdown renderer
+  const renderMessage = (content) => {
+    const sanitized = (content || '')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/&lt;(\/?)(b|i|strong|em|u|br|p|h[1-6]|ul|ol|li|code|pre|blockquote)&gt;/gi, '<$1$2>');
+    return marked.parse(sanitized);
+  };
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -260,9 +275,12 @@ export default function ChatBox({
                   }`}
                 >
                   <div className={styles.message}>
-                    <div className={styles.messageContent}>
-                      {message.content}
-                    </div>
+                  <div 
+                    className={styles.messageContent}
+                    dangerouslySetInnerHTML={{ 
+                      __html: renderMessage(message.content) 
+                    }}
+                  />
                     {message.role === 'assistant' && message.model && (
                       <div className={styles.messageModel}>
                         {message.model}

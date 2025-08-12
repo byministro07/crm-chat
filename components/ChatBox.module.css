@@ -73,6 +73,54 @@
   display: inline-block;
 }
 
+/* Markdown content styles */
+.messageContent strong,
+.messageContent b {
+  font-weight: 600;
+}
+
+.messageContent em,
+.messageContent i {
+  font-style: italic;
+}
+
+.messageContent code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.messageContent pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.messageContent ul,
+.messageContent ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.messageContent h1,
+.messageContent h2,
+.messageContent h3 {
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+/* Different colors for user messages */
+.userMessage .messageContent code {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.userMessage .messageContent pre {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 .userMessage .messageContent {
   background: #007aff;
   color: white;
