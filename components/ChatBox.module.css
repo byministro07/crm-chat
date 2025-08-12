@@ -58,7 +58,7 @@
   max-width: 70%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;  /* Remove gap between elements */
 }
 
 .messageContent {
@@ -85,7 +85,8 @@
 .messageModel {
   font-size: 11px;
   color: #8e8e93;
-  padding: 0 8px;
+  padding: 2px 8px;
+  margin: 0;  /* Remove all margins */
 }
 
 /* Loading Message */
@@ -306,7 +307,7 @@
 .retryContainer {
   position: relative;
   display: inline-block;
-  margin-top: 4px;  /* Reduced from 8px */
+  margin-top: 2px;  /* Minimal gap, almost touching */
   align-self: flex-end;
 }
 
@@ -397,4 +398,13 @@
 
 .retryOption svg {
   flex-shrink: 0;
+}
+
+/* For assistant messages specifically */
+.assistantMessage .message {
+  align-items: flex-start;  /* Align items to start */
+}
+
+.assistantMessage .retryContainer {
+  margin-left: 8px;  /* Slight indent to align with message bubble edge */
 }
