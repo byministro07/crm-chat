@@ -74,6 +74,7 @@ export default function Home() {
     setSelectedContact(null);
     setSessionId(null);
     setShowContactSearch(false);
+    setThinkHarder(false);  // Add this line to reset to Flash
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }

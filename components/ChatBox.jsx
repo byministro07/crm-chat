@@ -33,6 +33,11 @@ export default function ChatBox({
     }
   }, [sessionId]);
 
+  // Reset to Flash mode when changing conversations or contacts
+  useEffect(() => {
+    setThinkHarder(false);
+  }, [sessionId, contactId]);
+
   // Auto-focus input
   useEffect(() => {
     if (inputRef.current) {
@@ -129,11 +134,6 @@ export default function ChatBox({
         model: data.model
       };
       setMessages(prev => [...prev, assistantMessage]);
-
-      // Reset Think Harder after each message
-      if (thinkHarder) {
-        setThinkHarder(false);
-      }
     } catch (err) {
       console.error('Failed to send message:', err);
       // Add error message
