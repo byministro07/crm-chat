@@ -69,8 +69,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
-  margin: 0 !important;
-  display: inline-block;
+  display: block;  /* Full block, not inline */
+  margin: 0;
 }
 
 /* Markdown content styles */
@@ -357,15 +357,15 @@
 
 /* Retry Button */
 .retryContainer {
-  position: relative;
-  display: inline-block;
-  margin-top: -2px !important;  /* Negative margin to overlap slightly */
-  margin-left: 8px;
-  align-self: flex-start;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  margin-left: 0;
+  width: 100%;
 }
 
 .retryButtonGroup {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   border: 1px solid #e5e5e7;
   border-radius: 16px;

@@ -69,13 +69,18 @@ Return only the status word (PAID, ACTIVE, DORMANT, or UNSURE).`;
     console.log('Prompt:', prompt);
     const data = await response.json();
     console.log('AI Response:', data);
-    const statusRaw = data.choices?.[0]?.message?.content?.trim().toUpperCase() || 'UNSURE';
+    const responseText = data.choices?.[0]?.message?.content || '';
+    console.log('Raw AI response:', responseText);
+    
+    // Clean and validate the response
+    const status = responseText.trim().toUpperCase();
+    console.log('Cleaned status:', status);
     
     // Validate status
     const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE'];
-    const finalStatus = validStatuses.includes(statusRaw) ? statusRaw : 'UNSURE';
-    console.log('Final status:', finalStatus);
+    const finalStatus = validStatuses.includes(status) ? status : 'UNSURE';
     
+    console.log('Returning status:', finalStatus);
     return NextResponse.json({ status: finalStatus });
     
   } catch (error) {
