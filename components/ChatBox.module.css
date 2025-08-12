@@ -58,7 +58,8 @@
   max-width: 70%;
   display: flex;
   flex-direction: column;
-  gap: 0;  /* Remove gap between elements */
+  gap: 0 !important;
+  align-items: flex-start;
 }
 
 .messageContent {
@@ -68,6 +69,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
+  margin: 0 !important;
+  display: inline-block;
 }
 
 .userMessage .messageContent {
@@ -85,8 +88,9 @@
 .messageModel {
   font-size: 11px;
   color: #8e8e93;
-  padding: 2px 8px;
-  margin: 0;  /* Remove all margins */
+  padding: 0 8px;
+  margin: 0 !important;
+  line-height: 1;
 }
 
 /* Loading Message */
@@ -307,8 +311,9 @@
 .retryContainer {
   position: relative;
   display: inline-block;
-  margin-top: 2px;  /* Minimal gap, almost touching */
-  align-self: flex-end;
+  margin-top: -2px !important;  /* Negative margin to overlap slightly */
+  margin-left: 8px;
+  align-self: flex-start;
 }
 
 .retryButtonGroup {
@@ -400,11 +405,12 @@
   flex-shrink: 0;
 }
 
-/* For assistant messages specifically */
-.assistantMessage .message {
-  align-items: flex-start;  /* Align items to start */
+/* For user messages keep right alignment */
+.userMessage .message {
+  align-items: flex-end;
 }
 
-.assistantMessage .retryContainer {
-  margin-left: 8px;  /* Slight indent to align with message bubble edge */
+/* Assistant message specific */
+.assistantMessage .message {
+  align-items: flex-start;
 }
