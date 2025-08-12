@@ -12,7 +12,7 @@ const truncate = (s='', n=MAX_MSG_LENGTH) => (s.length > n ? s.slice(0, n) + 'â€
 async function getMessages(contactId, limit = MAX_CONTEXT_MSGS) {
   const { data } = await supabaseAdmin
     .from('conversations')
-    .select('channel, direction, sender, body, occurred_at')
+    .select('channel, direction, sender, body, occurred_at, created_at')
     .eq('contact_id', contactId)
     .order('occurred_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -31,9 +31,16 @@ async function getOrdersSnapshot(contactId, limit = 1000) {
 }
 function buildMessageLog(msgs) {
   return msgs.slice().reverse().map(m => {
+    // Use occurred_at for display but note it only has minute precision
     const stamp = m.occurred_at ? new Date(m.occurred_at).toISOString() : 'unknown time';
-    const who = m.sender || (m.direction === 'inbound' ? 'Customer' : 'Agent');
-    return `[${stamp}] ${who} (${m.channel || 'msg'}): ${truncate(m.body || '(no content)')}`;
+    // Clear direction labeling
+    const direction = m.direction === 'inbound' ? 'INBOUND' : 'OUTBOUND';
+    // Channel type (SMS, email, etc.)
+    const channel = m.channel || 'unknown';
+    // Only show sender if it exists (workflow, app, etc.) - will be empty for customer messages
+    const sender = m.sender && m.sender !== 'Agent' ? ` via ${m.sender}` : '';
+    // Format: [timestamp] DIRECTION via sender (channel): message
+    return `[${stamp}] ${direction}${sender} (${channel}): ${truncate(m.body || '(no content)')}`;
   }).join('\n');
 }
 
