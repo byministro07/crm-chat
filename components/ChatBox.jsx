@@ -33,6 +33,7 @@ export default function ChatBox({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const creatingSessionRef = useRef(false);
   const [showModeToast, setShowModeToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showRetryDropdown, setShowRetryDropdown] = useState(false);
@@ -44,7 +45,11 @@ export default function ChatBox({
   useEffect(() => {
     if (sessionId) {
       setCurrentSessionId(sessionId);
-      loadMessages(sessionId);
+      // Only load messages if we're not in the middle of creating this session
+      if (!creatingSessionRef.current) {
+        loadMessages(sessionId);
+      }
+      creatingSessionRef.current = false;
     } else {
       setMessages([]);
       setCurrentSessionId(null);
@@ -130,6 +135,7 @@ export default function ChatBox({
       // Create session if needed (only on first message)
       let activeSessionId = currentSessionId;
       if (!activeSessionId) {
+        creatingSessionRef.current = true;  // Mark that we're creating a session
         const sessionRes = await fetch('/api/chat/session/new', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -145,6 +151,9 @@ export default function ChatBox({
           activeSessionId = sessionData.sessionId;
           setCurrentSessionId(activeSessionId);
           onSessionCreated?.(activeSessionId);
+
+          // Don't clear messages - we want to keep the user message visible
+          creatingSessionRef.current = false;
         }
       }
 
