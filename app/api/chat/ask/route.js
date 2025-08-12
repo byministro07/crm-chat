@@ -118,6 +118,9 @@ ${ctx.messagesLog}`;
       { role: 'user', content: `${contextBlock}\n\nQuestion: ${question}` }
     ];
 
+    console.log(`[Ask API] Sending to model ${model} with ${messages.length} messages`);
+    const startTime = Date.now();
+    
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -125,11 +128,19 @@ ${ctx.messagesLog}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ model, temperature: 0.2, messages, max_tokens: 8192 }),
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     });
 
+    const responseTime = Date.now() - startTime;
+    console.log(`[Ask API] OpenRouter responded in ${responseTime}ms with status ${res.status}`);
+
     if (!res.ok) {
-      const t = await res.text().catch(() => '');
-      return NextResponse.json({ error: `OpenRouter ${res.status}: ${t}` }, { status: 500 });
+      const errorText = await res.text().catch(() => 'Could not read error response');
+      console.error(`[Ask API] OpenRouter error: ${errorText}`);
+      return NextResponse.json({ 
+        error: `Model error (${res.status}): ${errorText}`,
+        debug: { model, responseTime }
+      }, { status: 500 });
     }
 
     const data = await res.json();
@@ -144,6 +155,19 @@ ${ctx.messagesLog}`;
 
     return NextResponse.json({ answer, model });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[Ask API] Error:', e.message, e.stack);
+    
+    // Specific error messages
+    if (e.name === 'AbortError') {
+      return NextResponse.json({ 
+        error: 'Request timed out. Try a shorter question or lighter model tier.',
+        debug: { timeout: true }
+      }, { status: 504 });
+    }
+    
+    return NextResponse.json({ 
+      error: `Server error: ${e.message}`,
+      debug: { type: e.name }
+    }, { status: 500 });
   }
 }
