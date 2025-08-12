@@ -11,7 +11,8 @@ export default function ChatBox({
   thinkHarder, 
   setThinkHarder,
   selectedContact,
-  onSessionCreated 
+  onSessionCreated,
+  onMessageSent
 }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -148,6 +149,11 @@ export default function ChatBox({
         model: data.model
       };
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Call parent handler for status update
+      if (onMessageSent) {
+        onMessageSent();
+      }
     } catch (err) {
       console.error('Failed to send message:', err);
       // Add error message

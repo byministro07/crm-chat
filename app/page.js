@@ -12,6 +12,8 @@ export default function Home() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [thinkHarder, setThinkHarder] = useState(false);
   const [showContactSearch, setShowContactSearch] = useState(false);
+  const [customerStatus, setCustomerStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   // Load session from window if exists
   useEffect(() => {
@@ -52,14 +54,38 @@ export default function Home() {
     }
   };
 
+  const analyzeCustomerStatus = async (contactId, sessionId) => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch('/api/analyze-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId, sessionId })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setCustomerStatus(data.status);
+      }
+    } catch (err) {
+      console.error('Error analyzing status:', err);
+      setCustomerStatus('UNSURE');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
   const handleContactSelect = async (contact) => {
     setSelectedContact(contact);
     setShowContactSearch(false);
     // Don't create session yet - wait for first message
     setSessionId(null);
+    setCustomerStatus(null);  // Reset status
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
+    // Analyze status for new contact
+    await analyzeCustomerStatus(contact.id, null);
   };
 
   const handleSessionSelect = async (newSessionId) => {
@@ -85,6 +111,13 @@ export default function Home() {
     setSessionId(newSessionId);
     if (typeof window !== 'undefined') {
       window.__SESSION_ID = newSessionId;
+    }
+  };
+
+  const handleMessageSent = async () => {
+    // Re-analyze status after sending first message in existing session
+    if (sessionId && selectedContact) {
+      await analyzeCustomerStatus(selectedContact.id, sessionId);
     }
   };
 
@@ -144,6 +177,27 @@ export default function Home() {
               <>
                 <span className={styles.contactName}>{selectedContact.name || 'Unknown'}</span>
                 <span className={styles.contactEmail}>{selectedContact.email}</span>
+                
+                {/* Status Pill */}
+                <div className={styles.statusPill}>
+                  {statusLoading ? (
+                    <div className={styles.statusLoading}>
+                      <div className={styles.spinner}></div>
+                    </div>
+                  ) : customerStatus ? (
+                    <div className={`${styles.statusContent} ${styles[`status${customerStatus}`]}`}>
+                      <span className={styles.statusIcon}>
+                        {customerStatus === 'PAID' && '$'}
+                        {customerStatus === 'ACTIVE' && '✓'}
+                        {customerStatus === 'DORMANT' && 'zzz'}
+                        {customerStatus === 'UNSURE' && '?'}
+                      </span>
+                      <span className={styles.statusText}>
+                        {customerStatus.charAt(0) + customerStatus.slice(1).toLowerCase()}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : (
               <span className={styles.selectPrompt}>Select a customer</span>
@@ -192,6 +246,7 @@ export default function Home() {
               setThinkHarder={setThinkHarder}
               selectedContact={selectedContact}
               onSessionCreated={handleSessionCreated}
+              onMessageSent={handleMessageSent}  // Add this
             />
           )}
         </main>
