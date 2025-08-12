@@ -301,3 +301,80 @@
     transform: translateY(0);
   }
 }
+
+/* Retry Button */
+.retryContainer {
+  position: relative;
+  display: inline-block;
+  margin-top: 8px;
+  align-self: flex-end;
+}
+
+.retryButton {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid #e5e5e7;
+  border-radius: 16px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.retryButton:hover {
+  background: #f5f5f5;
+  border-color: #d1d5db;
+}
+
+.retryDropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  min-width: 160px;
+  z-index: 50;
+  animation: dropdownSlide 0.2s ease;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.retryOption {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.retryOption:hover {
+  background: #f5f5f5;
+}
+
+.retryOption svg {
+  flex-shrink: 0;
+}

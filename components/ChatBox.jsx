@@ -19,6 +19,8 @@ export default function ChatBox({
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
   const [showModeToast, setShowModeToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showRetryDropdown, setShowRetryDropdown] = useState(false);
+  const [retryingMessage, setRetryingMessage] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -56,6 +58,18 @@ export default function ChatBox({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Close retry dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showRetryDropdown && !e.target.closest(`.${styles.retryContainer}`)) {
+        setShowRetryDropdown(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showRetryDropdown]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -150,6 +164,66 @@ export default function ChatBox({
     }
   };
 
+  const handleRetryMessage = async (useGeniusMode) => {
+    if (!messages.length || retryingMessage) return;
+    
+    // Find last assistant message
+    const lastAssistantIndex = messages.findLastIndex(m => m.role === 'assistant');
+    if (lastAssistantIndex === -1) return;
+    
+    // Get the last user message before it
+    const lastUserIndex = messages.slice(0, lastAssistantIndex).findLastIndex(m => m.role === 'user');
+    if (lastUserIndex === -1) return;
+    
+    const userMessage = messages[lastUserIndex].content;
+    
+    setShowRetryDropdown(false);
+    setRetryingMessage(true);
+    
+    // Remove the last assistant message from UI
+    setMessages(prev => prev.slice(0, lastAssistantIndex));
+    
+    try {
+      // Resend with specified mode
+      const res = await fetch('/api/chat/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId,
+          question: userMessage,
+          tier: useGeniusMode ? 'high' : 'medium',
+          sessionId: currentSessionId,
+          isRetry: true
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to retry message');
+
+      const data = await res.json();
+      
+      // Add new assistant response
+      const assistantMessage = {
+        role: 'assistant',
+        content: data.answer,
+        created_at: new Date().toISOString(),
+        model: data.model
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      
+    } catch (err) {
+      console.error('Failed to retry message:', err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        created_at: new Date().toISOString(),
+        isError: true
+      }]);
+    } finally {
+      setRetryingMessage(false);
+      inputRef.current?.focus();
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -168,25 +242,81 @@ export default function ChatBox({
           </div>
         ) : (
           <div className={styles.messagesList}>
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`${styles.messageWrapper} ${
-                  message.role === 'user' ? styles.userMessage : styles.assistantMessage
-                }`}
-              >
-                <div className={styles.message}>
-                  <div className={styles.messageContent}>
-                    {message.content}
-                  </div>
-                  {message.role === 'assistant' && message.model && (
-                    <div className={styles.messageModel}>
-                      {message.model}
+            {messages.map((message, index) => {
+              const isLastAssistant = message.role === 'assistant' && 
+                index === messages.findLastIndex(m => m.role === 'assistant');
+              
+              return (
+                <div
+                  key={index}
+                  className={`${styles.messageWrapper} ${
+                    message.role === 'user' ? styles.userMessage : styles.assistantMessage
+                  }`}
+                >
+                  <div className={styles.message}>
+                    <div className={styles.messageContent}>
+                      {message.content}
                     </div>
-                  )}
+                    {message.role === 'assistant' && message.model && (
+                      <div className={styles.messageModel}>
+                        {message.model}
+                      </div>
+                    )}
+                    
+                    {/* Retry button for last assistant message */}
+                    {isLastAssistant && !loading && !retryingMessage && (
+                      <div className={styles.retryContainer}>
+                        <button
+                          className={styles.retryButton}
+                          onClick={() => setShowRetryDropdown(!showRetryDropdown)}
+                          aria-label="Retry message"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 4v6h6M23 20v-6h-6"/>
+                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                          </svg>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M6 9l6 6 6-6"/>
+                          </svg>
+                        </button>
+                        
+                        {showRetryDropdown && (
+                          <div className={styles.retryDropdown}>
+                            <button
+                              className={styles.retryOption}
+                              onClick={() => handleRetryMessage(!message.model?.includes('gpt-5'))}
+                            >
+                              {message.model?.includes('gpt-5') ? (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFEA00" strokeWidth="2">
+                                    <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                                  </svg>
+                                  <span>Retry with Flash</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#007AFF" strokeWidth="1.5">
+                                    <path d="M8 12V3.33"/>
+                                    <path d="M10 8.67a2.78 2.78 0 0 1-2-2.67 2.78 2.78 0 0 1-2 2.67"/>
+                                    <path d="M11.73 4.33A2 2 0 1 0 8 3.33a2 2 0 1 0-3.73 1"/>
+                                    <path d="M11.998 3.42a2.67 2.67 0 0 1 1.684 3.85"/>
+                                    <path d="M12 12a2.67 2.67 0 0 0 1.33-4.98"/>
+                                    <path d="M13.31 11.66A2.67 2.67 0 1 1 8 12a2.67 2.67 0 1 1-5.31-.34"/>
+                                    <path d="M4 12a2.67 2.67 0 0 1-1.33-4.98"/>
+                                    <path d="M4.002 3.42a2.67 2.67 0 0 0-1.684 3.85"/>
+                                  </svg>
+                                  <span>Retry with Genius</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {loading && (
               <div className={styles.messageWrapper}>
                 <div className={styles.loadingMessage}>
