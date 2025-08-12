@@ -78,13 +78,19 @@ export default function ChatBox({
   // Close retry dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (showRetryDropdown && !e.target.closest(`.${styles.retryContainer}`)) {
+      if (
+        showRetryDropdown &&
+        !e.target.closest(`.${styles.retryContainer}`) &&
+        !e.target.closest(`.${styles.retryDropdown}`)
+      ) {
         setShowRetryDropdown(false);
       }
     };
-    
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+
+    if (showRetryDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
   }, [showRetryDropdown]);
 
   const scrollToBottom = () => {
@@ -107,16 +113,18 @@ export default function ChatBox({
     if (!input.trim() || !contactId || loading) return;
 
     const userMessage = input.trim();
-    setInput('');
-    setLoading(true);
-
-    // Add user message to UI immediately
+    
+    // Add user message to UI immediately (BEFORE clearing input)
     const tempUserMessage = {
       role: 'user',
       content: userMessage,
       created_at: new Date().toISOString()
     };
     setMessages(prev => [...prev, tempUserMessage]);
+
+    // Clear input AFTER adding message
+    setInput('');
+    setLoading(true);
 
     try {
       // Create session if needed (only on first message)
