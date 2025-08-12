@@ -55,7 +55,10 @@ export default function Home() {
   };
 
   const analyzeCustomerStatus = async (contactId, sessionId) => {
+    console.log('Starting status analysis for:', { contactId, sessionId });
     setStatusLoading(true);
+    setCustomerStatus(null);
+    
     try {
       const res = await fetch('/api/analyze-status', {
         method: 'POST',
@@ -63,9 +66,15 @@ export default function Home() {
         body: JSON.stringify({ contactId, sessionId })
       });
       
+      console.log('Status API response:', res.status);
+      
       if (res.ok) {
         const data = await res.json();
+        console.log('Status result:', data);
         setCustomerStatus(data.status);
+      } else {
+        console.error('Status API error:', await res.text());
+        setCustomerStatus('UNSURE');
       }
     } catch (err) {
       console.error('Error analyzing status:', err);
