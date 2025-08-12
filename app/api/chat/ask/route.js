@@ -1,13 +1,12 @@
+// app/api/chat/ask/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { MODEL_BY_TIER } from '@/lib/models';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MAX_CONTEXT_MSGS = Number(process.env.MAX_CONTEXT_MSGS || 50);
-const CONTEXT_DAYS     = Number(process.env.CONTEXT_DAYS || 120);
-const MAX_MSG_LENGTH   = Number(process.env.MAX_MSG_LENGTH || 1000);
-
-const isoSince = () => new Date(Date.now() - CONTEXT_DAYS*24*60*60*1000).toISOString();
+const MAX_CONTEXT_MSGS = Number(process.env.MAX_CONTEXT_MSGS || 10000);
+const CONTEXT_DAYS     = Number(process.env.CONTEXT_DAYS || 36500); // 100 years
+const MAX_MSG_LENGTH   = Number(process.env.MAX_MSG_LENGTH || 10000);
 const truncate = (s='', n=MAX_MSG_LENGTH) => (s.length > n ? s.slice(0, n) + '…' : s);
 
 async function getMessages(contactId, limit = MAX_CONTEXT_MSGS) {
@@ -15,13 +14,12 @@ async function getMessages(contactId, limit = MAX_CONTEXT_MSGS) {
     .from('conversations')
     .select('channel, direction, sender, body, occurred_at')
     .eq('contact_id', contactId)
-    .gte('occurred_at', isoSince())
     .order('occurred_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(limit);
   return data || [];
 }
-async function getOrdersSnapshot(contactId, limit = 5) {
+async function getOrdersSnapshot(contactId, limit = 1000) {
   const { data } = await supabaseAdmin
     .from('orders')
     .select('order_id, order_date, status, order_total, tracking_number, tracking_link, shipping_address_raw')
@@ -42,7 +40,7 @@ function buildMessageLog(msgs) {
 async function buildContext(contactId, contactHeader) {
   const [msgs, orders] = await Promise.all([
     getMessages(contactId, MAX_CONTEXT_MSGS),
-    getOrdersSnapshot(contactId, 5),
+    getOrdersSnapshot(contactId, 1000),
   ]);
   const messagesLog = buildMessageLog(msgs);
   const ordersText = orders.length
@@ -90,9 +88,11 @@ export async function POST(req) {
 
     const model = MODEL_BY_TIER[tier] || MODEL_BY_TIER.light;
     const system =
-      'You are an internal assistant for a sales team. ' +
-      'Use ONLY the provided context and the conversation so far. ' +
-      'If the answer is not in the context, say exactly: "I can’t tell from the provided data." Be concise.';
+      'You are an intelligent assistant for a sales team analyzing customer data. ' +
+      'Always provide helpful answers based on the available context. ' +
+      'If information is partial, work with what you have and indicate your confidence level (0-100%). ' +
+      'If critical information is missing, ask clarifying questions. ' +
+      'Never just say you cannot help - either provide insights from available data or ask for more specific information.';
 
     const contextBlock =
 `Context — Profile:
