@@ -122,9 +122,9 @@ export default function SessionsSidebar({
         {sessions.length === 0 ? (
           <div className={styles.empty}>No chat sessions yet</div>
         ) : (
-          sessions.map(session => (
+          sessions.map((session, index) => (
             <button
-              key={session.id}
+              key={`session-${session.id}`}
               className={`${styles.sessionItem} ${
                 session.id === currentSessionId ? styles.active : ''
               }`}

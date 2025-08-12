@@ -266,19 +266,28 @@ export default function ChatBox({
                     {/* Retry button for last assistant message */}
                     {isLastAssistant && !loading && !retryingMessage && (
                       <div className={styles.retryContainer}>
-                        <button
-                          className={styles.retryButton}
-                          onClick={() => setShowRetryDropdown(!showRetryDropdown)}
-                          aria-label="Retry message"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 4v6h6M23 20v-6h-6"/>
-                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-                          </svg>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M6 9l6 6 6-6"/>
-                          </svg>
-                        </button>
+                        <div className={styles.retryButtonGroup}>
+                          <button
+                            className={styles.retryButton}
+                            onClick={() => handleRetryMessage(message.model?.includes('gpt-5'))}
+                            aria-label="Retry with same model"
+                            title={`Retry with ${message.model?.includes('gpt-5') ? 'Genius' : 'Flash'} mode`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 4v6h6M23 20v-6h-6"/>
+                              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                            </svg>
+                          </button>
+                          <button
+                            className={styles.retryDropdownButton}
+                            onClick={() => setShowRetryDropdown(!showRetryDropdown)}
+                            aria-label="More retry options"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                          </button>
+                        </div>
                         
                         {showRetryDropdown && (
                           <div className={styles.retryDropdown}>

@@ -306,27 +306,47 @@
 .retryContainer {
   position: relative;
   display: inline-block;
-  margin-top: 8px;
+  margin-top: 4px;  /* Reduced from 8px */
   align-self: flex-end;
+}
+
+.retryButtonGroup {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e5e5e7;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .retryButton {
   display: flex;
   align-items: center;
-  gap: 2px;
   padding: 5px 8px;
   background: transparent;
-  border: 1px solid #e5e5e7;
-  border-radius: 16px;
+  border: none;
   color: #666;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 12px;
 }
 
 .retryButton:hover {
   background: #f5f5f5;
-  border-color: #d1d5db;
+}
+
+.retryDropdownButton {
+  display: flex;
+  align-items: center;
+  padding: 5px 6px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid #e5e5e7;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryDropdownButton:hover {
+  background: #f5f5f5;
 }
 
 .retryDropdown {
