@@ -61,7 +61,7 @@ async function getSessionTurns(sessionId, limit = 20) {
     .eq('session_id', sessionId)
     .order('created_at', { ascending: true })
     .limit(limit);
-  return (data || []).map(m => ({ role: m.role, content: truncate(m.content, 2000) }));
+  return (data || []).map(m => ({ role: m.role, content: m.content }));
 }
 
 export async function POST(req) {
@@ -117,7 +117,7 @@ ${ctx.messagesLog}`;
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model, temperature: 0.2, messages, max_tokens: 450 }),
+      body: JSON.stringify({ model, temperature: 0.2, messages, max_tokens: 8192 }),
     });
 
     if (!res.ok) {
