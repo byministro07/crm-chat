@@ -41,20 +41,21 @@ export default function ChatBox({
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Load messages if we have a session
-  useEffect(() => {
-    if (sessionId) {
-      setCurrentSessionId(sessionId);
-      // Only load messages if we're not in the middle of creating this session
-      if (!creatingSessionRef.current) {
-        loadMessages(sessionId);
-      }
-      creatingSessionRef.current = false;
-    } else {
-      setMessages([]);
-      setCurrentSessionId(null);
-    }
-  }, [sessionId]);
+	// Load messages if we have a session
+	useEffect(() => {
+		if (sessionId) {
+			setCurrentSessionId(sessionId);
+			// Check if this is a newly created session
+			const isNewSession = creatingSessionRef.current;
+			if (!isNewSession) {
+				loadMessages(sessionId, false);
+			}
+			creatingSessionRef.current = false;
+		} else {
+			setMessages([]);
+			setCurrentSessionId(null);
+		}
+	}, [sessionId]);
 
   // Reset to Flash mode when changing conversations or contacts
   useEffect(() => {
@@ -102,17 +103,22 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadMessages = async (sessionId) => {
-    try {
-      const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data.messages || []);
-      }
-    } catch (err) {
-      console.error('Failed to load messages:', err);
-    }
-  };
+	const loadMessages = async (sessionId, isNewSession = false) => {
+		try {
+			const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
+			if (res.ok) {
+				const data = await res.json();
+				// If this is a new session and we have messages (temp message), keep them
+				if (isNewSession && messages.length > 0) {
+					// Don't overwrite - the temp message should stay
+					return;
+				}
+				setMessages(data.messages || []);
+			}
+		} catch (err) {
+			console.error('Failed to load messages:', err);
+		}
+	};
 
   const handleSend = async () => {
     if (!input.trim() || !contactId || loading) return;
