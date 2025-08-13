@@ -109,22 +109,23 @@ export default function Home() {
 
   const handleContactSelect = async (contact) => {
     console.log('handleContactSelect: Starting for', contact.name);
+    
     // Clear everything first
     setMessages([]);
     setSessionId(null);
+    setCustomerStatus(null);  // Clear old status
     
-    // Then set new contact
+    // Set new contact
     setSelectedContact(contact);
     setShowContactSearch(false);
-    setCustomerStatus(null);
-    setStatusLoading(true);
+    setStatusLoading(true);  // Show loading immediately
     
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
     
-    // Analyze status for new contact
-    console.log('handleContactSelect: Calling analyzeCustomerStatus');
+    // Always analyze status for new contact (force fresh analysis)
+    console.log('handleContactSelect: Starting fresh status analysis');
     await analyzeCustomerStatus(contact.id, null);
     console.log('handleContactSelect: Status analysis complete');
   };
@@ -136,6 +137,12 @@ export default function Home() {
     }
     await loadSessionContact(newSessionId);
     await loadMessages(newSessionId);
+    
+    // Refresh status analysis when selecting from history
+    if (selectedContact?.id) {
+      console.log('handleSessionSelect: Refreshing status for', selectedContact.name);
+      await analyzeCustomerStatus(selectedContact.id, newSessionId);
+    }
   };
 
   const handleNewChat = () => {
@@ -217,10 +224,7 @@ export default function Home() {
         model: data.model
       }]);
 
-      // Update status if needed
-      if (activeSessionId && !sessionId) {
-        analyzeCustomerStatus(selectedContact.id, activeSessionId);
-      }
+      // Removed duplicate status analysis; handled on selection paths
     } catch (err) {
       console.error('Failed to send message:', err);
       setMessages(prev => [...prev, {
