@@ -44,6 +44,9 @@ export default function Home() {
     try {
       const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
       const data = await res.json();
+      
+      // Load messages
+      setMessages(data.messages || []);
       if (data.session?.contact_id) {
         // Get full contact details
         const contactRes = await fetch(`/api/contacts/${data.session.contact_id}`);
@@ -105,17 +108,21 @@ export default function Home() {
   };
 
   const handleContactSelect = async (contact) => {
+    // Clear everything first
+    setMessages([]);
+    setSessionId(null);
+    
+    // Then set new contact
     setSelectedContact(contact);
     setShowContactSearch(false);
-    // Don't create session yet - wait for first message
-    setSessionId(null);
-    setMessages([]);
-    setCustomerStatus(null);  // Reset status
-    setStatusLoading(true);  // Show loading immediately
+    setCustomerStatus(null);
+    setStatusLoading(true);
+    
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
-    // Analyze status for new contact - don't await here
+    
+    // Analyze status for new contact
     analyzeCustomerStatus(contact.id, null);
   };
 
