@@ -8,16 +8,14 @@ import styles from './ChatBox.module.css';
 export default function ChatBox({ 
   contactId, 
   sessionId, 
-  messages,        // from parent
-  setMessages,     // from parent
-  loading,         // from parent
-  setLoading,      // from parent
+  messages,
+  loading,
   modelTier, 
   thinkHarder, 
   setThinkHarder,
   selectedContact,
-  onSessionCreated,
-  onMessageSent
+  onSendMessage,
+  onRetryMessage
 }) {
   // Configure marked for safety
   marked.setOptions({
@@ -37,7 +35,6 @@ export default function ChatBox({
   const [showModeToast, setShowModeToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showRetryDropdown, setShowRetryDropdown] = useState(false);
-  const [retryingMessage, setRetryingMessage] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -87,152 +84,17 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-
-
-  const handleSend = async () => {
+  
+  const handleSend = () => {
     if (!input.trim() || !contactId || loading) return;
-
     const userMessage = input.trim();
-    
-    // Add user message to UI immediately (BEFORE clearing input)
-    const tempUserMessage = {
-      role: 'user',
-      content: userMessage,
-      created_at: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, tempUserMessage]);
-
-    // Clear input AFTER adding message
     setInput('');
-    setLoading(true);
-
-    try {
-      // Create session if needed (only on first message)
-      let activeSessionId = sessionId;
-      if (!activeSessionId) {
-        // Creating a new session
-        const sessionRes = await fetch('/api/chat/session/new', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contactId,
-            firstMessage: userMessage,
-            modelTier: thinkHarder ? 'high' : 'medium'
-          })
-        });
-
-        if (sessionRes.ok) {
-          const sessionData = await sessionRes.json();
-          activeSessionId = sessionData.sessionId;
-          onSessionCreated?.(activeSessionId);
-
-          // Don't clear messages - we want to keep the user message visible
-        }
-      }
-
-      // Send the message
-      const res = await fetch('/api/chat/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactId,
-          question: userMessage,
-          tier: thinkHarder ? 'high' : 'medium',
-          sessionId: activeSessionId
-        })
-      });
-
-      if (!res.ok) throw new Error('Failed to send message');
-
-      const data = await res.json();
-      
-      // Add assistant response
-      const assistantMessage = {
-        role: 'assistant',
-        content: data.answer,
-        created_at: new Date().toISOString(),
-        model: data.model
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Call parent handler for status update
-      if (onMessageSent) {
-        onMessageSent();
-      }
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      // Add error message
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        created_at: new Date().toISOString(),
-        isError: true
-      }]);
-    } finally {
-      setLoading(false);
-      // Re-focus input
-      inputRef.current?.focus();
-    }
+    onSendMessage?.(userMessage);
   };
 
-  const handleRetryMessage = async (useGeniusMode) => {
-    if (!messages.length || retryingMessage) return;
-    
-    // Find last assistant message
-    const lastAssistantIndex = messages.findLastIndex(m => m.role === 'assistant');
-    if (lastAssistantIndex === -1) return;
-    
-    // Get the last user message before it
-    const lastUserIndex = messages.slice(0, lastAssistantIndex).findLastIndex(m => m.role === 'user');
-    if (lastUserIndex === -1) return;
-    
-    const userMessage = messages[lastUserIndex].content;
-    
+  const handleRetryMessage = (useGeniusMode) => {
     setShowRetryDropdown(false);
-    setRetryingMessage(true);
-    
-    // Remove the last assistant message from UI
-    setMessages(prev => prev.slice(0, lastAssistantIndex));
-    
-    try {
-      // Resend with specified mode
-      const res = await fetch('/api/chat/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactId,
-          question: userMessage,
-          tier: useGeniusMode ? 'high' : 'medium',
-          sessionId: sessionId,
-          isRetry: true
-        })
-      });
-
-      if (!res.ok) throw new Error('Failed to retry message');
-
-      const data = await res.json();
-      
-      // Add new assistant response
-      const assistantMessage = {
-        role: 'assistant',
-        content: data.answer,
-        created_at: new Date().toISOString(),
-        model: data.model
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      
-    } catch (err) {
-      console.error('Failed to retry message:', err);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        created_at: new Date().toISOString(),
-        isError: true
-      }]);
-    } finally {
-      setRetryingMessage(false);
-      inputRef.current?.focus();
-    }
+    onRetryMessage?.(useGeniusMode);
   };
 
   const handleKeyDown = (e) => {
@@ -278,7 +140,7 @@ export default function ChatBox({
                     )}
                     
                     {/* Retry button for last assistant message */}
-                    {isLastAssistant && !loading && !retryingMessage && (
+                    {isLastAssistant && !loading && (
                       <div className={styles.retryContainer}>
                         <div className={styles.retryButtonGroup}>
                           <button

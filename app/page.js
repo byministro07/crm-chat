@@ -154,10 +154,133 @@ export default function Home() {
     }
   };
 
-  const handleMessageSent = async () => {
-    // Re-analyze status after sending first message in existing session
-    if (sessionId && selectedContact) {
-      await analyzeCustomerStatus(selectedContact.id, sessionId);
+  const handleSendMessage = async (userMessage) => {
+    if (!userMessage.trim() || !selectedContact?.id || loading) return;
+
+    // Add user message immediately (optimistic update)
+    const tempUserMessage = {
+      role: 'user',
+      content: userMessage,
+      created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, tempUserMessage]);
+    setLoading(true);
+
+    try {
+      // Create session if needed
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        const sessionRes = await fetch('/api/chat/session/new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contactId: selectedContact.id,
+            firstMessage: userMessage,
+            modelTier: thinkHarder ? 'high' : 'medium'
+          })
+        });
+
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          activeSessionId = sessionData.sessionId;
+          setSessionId(activeSessionId);
+          if (typeof window !== 'undefined') {
+            window.__SESSION_ID = activeSessionId;
+          }
+        }
+      }
+
+      // Send message to API
+      const res = await fetch('/api/chat/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: selectedContact.id,
+          question: userMessage,
+          tier: thinkHarder ? 'high' : 'medium',
+          sessionId: activeSessionId
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to send message');
+
+      const data = await res.json();
+      
+      // Add assistant response
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.answer,
+        created_at: new Date().toISOString(),
+        model: data.model
+      }]);
+
+      // Update status if needed
+      if (activeSessionId && !sessionId) {
+        analyzeCustomerStatus(selectedContact.id, activeSessionId);
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        created_at: new Date().toISOString(),
+        isError: true
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetryMessage = async (useGeniusMode) => {
+    if (!messages.length || loading) return;
+    
+    // Find last user message
+    const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
+    if (lastUserIndex === -1) return;
+    
+    const userMessage = messages[lastUserIndex].content;
+    
+    // Remove last assistant message
+    const lastAssistantIndex = messages.findLastIndex(m => m.role === 'assistant');
+    if (lastAssistantIndex > lastUserIndex) {
+      setMessages(prev => prev.slice(0, lastAssistantIndex));
+    }
+    
+    setLoading(true);
+    
+    try {
+      const res = await fetch('/api/chat/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: selectedContact.id,
+          question: userMessage,
+          tier: useGeniusMode ? 'high' : 'medium',
+          sessionId: sessionId,
+          isRetry: true
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to retry');
+
+      const data = await res.json();
+      
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.answer,
+        created_at: new Date().toISOString(),
+        model: data.model
+      }]);
+    } catch (err) {
+      console.error('Failed to retry:', err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        created_at: new Date().toISOString(),
+        isError: true
+      }]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -282,15 +405,13 @@ export default function Home() {
               contactId={selectedContact.id}
               sessionId={sessionId}
               messages={messages}
-              setMessages={setMessages}
               loading={loading}
-              setLoading={setLoading}
               modelTier={thinkHarder ? 'high' : 'medium'}
               thinkHarder={thinkHarder}
               setThinkHarder={setThinkHarder}
               selectedContact={selectedContact}
-              onSessionCreated={handleSessionCreated}
-              onMessageSent={handleMessageSent}  // Add this
+              onSendMessage={handleSendMessage}
+              onRetryMessage={handleRetryMessage}
             />
           )}
         </main>
