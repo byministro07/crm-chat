@@ -45,11 +45,9 @@ export default function ChatBox({
 	useEffect(() => {
 		if (sessionId) {
 			setCurrentSessionId(sessionId);
-			// Check if this is a newly created session
-			const isNewSession = creatingSessionRef.current;
-			if (!isNewSession) {
-				loadMessages(sessionId, false);
-			}
+			// Skip loading if we're creating a new session
+			const skipLoad = creatingSessionRef.current;
+			loadMessages(sessionId, skipLoad);
 			creatingSessionRef.current = false;
 		} else {
 			setMessages([]);
@@ -61,6 +59,13 @@ export default function ChatBox({
   useEffect(() => {
     setThinkHarder(false);
   }, [sessionId, contactId]);
+
+  // Clear messages when switching contacts
+  useEffect(() => {
+    setMessages([]);
+    setCurrentSessionId(null);
+    creatingSessionRef.current = false;
+  }, [contactId]);
 
   // Auto-focus input
   useEffect(() => {
@@ -103,16 +108,16 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-	const loadMessages = async (sessionId, isNewSession = false) => {
+	const loadMessages = async (sessionId, skipLoad = false) => {
+		// Skip loading if we just created this session
+		if (skipLoad) {
+			return;
+		}
+		
 		try {
 			const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
 			if (res.ok) {
 				const data = await res.json();
-				// If this is a new session and we have messages (temp message), keep them
-				if (isNewSession && messages.length > 0) {
-					// Don't overwrite - the temp message should stay
-					return;
-				}
 				setMessages(data.messages || []);
 			}
 		} catch (err) {
