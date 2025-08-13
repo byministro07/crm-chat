@@ -1,3 +1,4 @@
+// app/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,6 +15,8 @@ export default function Home() {
   const [showContactSearch, setShowContactSearch] = useState(false);
   const [customerStatus, setCustomerStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Load session from window if exists
   useEffect(() => {
@@ -54,6 +57,23 @@ export default function Home() {
     }
   };
 
+  const loadMessages = async (sessionId) => {
+    if (!sessionId) {
+      setMessages([]);
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  };
+
   const analyzeCustomerStatus = async (contactId, sessionId) => {
     console.log('Starting status analysis for:', { contactId, sessionId });
     setStatusLoading(true);
@@ -89,6 +109,7 @@ export default function Home() {
     setShowContactSearch(false);
     // Don't create session yet - wait for first message
     setSessionId(null);
+    setMessages([]);
     setCustomerStatus(null);  // Reset status
     setStatusLoading(true);  // Show loading immediately
     if (typeof window !== 'undefined') {
@@ -104,11 +125,13 @@ export default function Home() {
       window.__SESSION_ID = newSessionId;
     }
     await loadSessionContact(newSessionId);
+    await loadMessages(newSessionId);
   };
 
   const handleNewChat = () => {
     setSelectedContact(null);
     setSessionId(null);
+    setMessages([]);
     setShowContactSearch(false);
     setThinkHarder(false);  // Add this line to reset to Flash
     if (typeof window !== 'undefined') {
@@ -251,6 +274,10 @@ export default function Home() {
             <ChatBox
               contactId={selectedContact.id}
               sessionId={sessionId}
+              messages={messages}
+              setMessages={setMessages}
+              loading={loading}
+              setLoading={setLoading}
               modelTier={thinkHarder ? 'high' : 'medium'}
               thinkHarder={thinkHarder}
               setThinkHarder={setThinkHarder}
