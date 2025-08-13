@@ -1,3 +1,107 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+export async function POST(request) {
+  try {
+    const { contactId, sessionId } = await request.json();
+    console.log('🔍 Analyzing status for:', { contactId, sessionId });
+    
+    // Get CUSTOMER conversation history from conversations table
+    const { data: conversations, error } = await supabaseAdmin
+      .from('conversations')  // ← CUSTOMER history, not chat_messages
+      .select('channel, direction, sender, body, occurred_at, created_at')
+      .eq('contact_id', contactId)  // ← Use contactId, not sessionId
+      .order('occurred_at', { ascending: false, nullsFirst: false })
+      .limit(100);
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return NextResponse.json({ status: 'UNKNOWN' });
+    }
+
+    const messages = conversations || [];
+    console.log(`📝 Found ${messages.length} customer conversations`);
+
+    // If no conversations found
+    if (messages.length === 0) {
+      console.log('❓ No customer history - returning UNKNOWN');
+      return NextResponse.json({ status: 'UNKNOWN' });
+    }
+    
+    // Get last message date
+    const lastMessageDate = new Date(messages[0].occurred_at || messages[0].created_at);
+    const daysSinceLastMessage = Math.floor((new Date() - lastMessageDate) / (1000 * 60 * 60 * 24));
+    
+    console.log(`📅 Days since last message: ${daysSinceLastMessage}`);
+    
+    // Format conversation - reverse to chronological order for analysis
+    const conversationText = messages
+      .slice()
+      .reverse()
+      .map(m => {
+        const direction = m.direction === 'inbound' ? 'Customer' : 'Company';
+        return `${direction}: ${m.body}`;
+      })
+      .join('\n')
+      .slice(0, 2000);
+    
+    // Quick check for payment keywords
+    const paymentKeywords = ['payment received', 'order placed', 'paid', 'purchased', 'payment confirmed'];
+    const hasPaymentMention = paymentKeywords.some(keyword => 
+      conversationText.toLowerCase().includes(keyword)
+    );
+    
+    // Call AI to analyze
+    console.log('🤖 Calling OpenRouter...');
+    
+    const prompt = `Analyze this customer conversation history and return ONLY one status word:
+- PAID: if you find words like "payment received", "order placed", "paid", "purchased", "payment confirmed"
+- ACTIVE: if last message < 30 days ago and no payment
+- DORMANT: if last message > 30 days ago and no payment
+- UNSURE: if cannot determine
+
+Days since last message: ${daysSinceLastMessage}
+Conversation:
+${conversationText}
+
+Return only the status word.`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-001',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 10,
+        temperature: 0.1
+      })
+    });
+    
+    if (!response.ok) {
+      console.error('❌ OpenRouter error:', response.status);
+      // Fallback without AI
+      if (daysSinceLastMessage > 30) return NextResponse.json({ status: 'DORMANT' });
+      return NextResponse.json({ status: 'ACTIVE' });
+    }
+
+    const data = await response.json();
+    console.log('✅ OpenRouter response:', data);
+    
+    const status = data.choices?.[0]?.message?.content?.trim().toUpperCase() || 'UNSURE';
+    const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE'];
+    const finalStatus = validStatuses.includes(status) ? status : 'UNSURE';
+    
+    console.log('📊 Final status:', finalStatus);
+    return NextResponse.json({ status: finalStatus });
+    
+  } catch (error) {
+    console.error('💥 Status analysis error:', error);
+    return NextResponse.json({ status: 'UNKNOWN' });
+  }
+}
 // app/api/analyze-status/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';

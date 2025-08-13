@@ -108,8 +108,6 @@ export default function Home() {
   };
 
   const handleContactSelect = async (contact) => {
-    console.log('handleContactSelect: Starting for', contact.name);
-    
     // Clear everything first
     setMessages([]);
     setSessionId(null);
@@ -118,16 +116,15 @@ export default function Home() {
     // Set new contact
     setSelectedContact(contact);
     setShowContactSearch(false);
-    setStatusLoading(true);  // Show loading immediately
+    setStatusLoading(true);  // DO show loading
     
     if (typeof window !== 'undefined') {
       delete window.__SESSION_ID;
     }
     
-    // Always analyze status for new contact (force fresh analysis)
-    console.log('handleContactSelect: Starting fresh status analysis');
+    // Analyze customer history immediately
+    console.log('Analyzing customer history for:', contact.name);
     await analyzeCustomerStatus(contact.id, null);
-    console.log('handleContactSelect: Status analysis complete');
   };
 
   const handleSessionSelect = async (newSessionId) => {

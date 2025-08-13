@@ -385,6 +385,10 @@
   background: #f0f0f0;
   color: #666;
 }
+.statusUNKNOWN {
+  background: #f0f0f0;
+  color: #666;
+}
 
 /* Loading Spinner */
 .statusLoading {
