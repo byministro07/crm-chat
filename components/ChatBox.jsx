@@ -45,10 +45,13 @@ export default function ChatBox({
 	useEffect(() => {
 		if (sessionId) {
 			setCurrentSessionId(sessionId);
-			// Skip loading if we're creating a new session
-			const skipLoad = creatingSessionRef.current;
-			loadMessages(sessionId, skipLoad);
-			creatingSessionRef.current = false;
+			// Don't load if we just created this session
+			if (!creatingSessionRef.current) {
+				loadMessages(sessionId);
+			} else {
+				// Reset the ref after we skip loading
+				creatingSessionRef.current = false;
+			}
 		} else {
 			setMessages([]);
 			setCurrentSessionId(null);
@@ -59,6 +62,13 @@ export default function ChatBox({
   useEffect(() => {
     setThinkHarder(false);
   }, [sessionId, contactId]);
+
+  // Clear messages when switching contacts
+  useEffect(() => {
+    setMessages([]);
+    setCurrentSessionId(null);
+    creatingSessionRef.current = false;
+  }, [contactId]);
 
   // Clear messages when switching contacts
   useEffect(() => {
@@ -108,17 +118,16 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-	const loadMessages = async (sessionId, skipLoad = false) => {
-		// Skip loading if we just created this session
-		if (skipLoad) {
-			return;
-		}
-		
+	const loadMessages = async (sessionId) => {
 		try {
 			const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
 			if (res.ok) {
 				const data = await res.json();
-				setMessages(data.messages || []);
+				// Only replace messages if we got some from the server
+				// If empty (new session), keep what we have
+				if (data.messages && data.messages.length > 0) {
+					setMessages(data.messages);
+				}
 			}
 		} catch (err) {
 			console.error('Failed to load messages:', err);
