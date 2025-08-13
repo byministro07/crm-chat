@@ -33,7 +33,7 @@ export default function ChatBox({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
-  const creatingSessionRef = useRef(false);
+  const [isNewlyCreatedSession, setIsNewlyCreatedSession] = useState(false);
   const [showModeToast, setShowModeToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showRetryDropdown, setShowRetryDropdown] = useState(false);
@@ -45,18 +45,20 @@ export default function ChatBox({
 	useEffect(() => {
 		if (sessionId) {
 			setCurrentSessionId(sessionId);
-			// Don't load if we just created this session
-			if (!creatingSessionRef.current) {
-				loadMessages(sessionId);
-			} else {
-				// Reset the ref after we skip loading
-				creatingSessionRef.current = false;
+			
+			// If this session was just created by us, don't load (we have the messages already)
+			if (isNewlyCreatedSession) {
+				setIsNewlyCreatedSession(false);
+				return;
 			}
+			
+			// Otherwise load messages from the server
+			loadMessages(sessionId);
 		} else {
 			setMessages([]);
 			setCurrentSessionId(null);
 		}
-	}, [sessionId]);
+	}, [sessionId, isNewlyCreatedSession]);
 
   // Reset to Flash mode when changing conversations or contacts
   useEffect(() => {
@@ -67,14 +69,7 @@ export default function ChatBox({
   useEffect(() => {
     setMessages([]);
     setCurrentSessionId(null);
-    creatingSessionRef.current = false;
-  }, [contactId]);
-
-  // Clear messages when switching contacts
-  useEffect(() => {
-    setMessages([]);
-    setCurrentSessionId(null);
-    creatingSessionRef.current = false;
+    setIsNewlyCreatedSession(false);
   }, [contactId]);
 
   // Auto-focus input
@@ -123,11 +118,7 @@ export default function ChatBox({
 			const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
 			if (res.ok) {
 				const data = await res.json();
-				// Only replace messages if we got some from the server
-				// If empty (new session), keep what we have
-				if (data.messages && data.messages.length > 0) {
-					setMessages(data.messages);
-				}
+				setMessages(data.messages || []);
 			}
 		} catch (err) {
 			console.error('Failed to load messages:', err);
@@ -155,7 +146,7 @@ export default function ChatBox({
       // Create session if needed (only on first message)
       let activeSessionId = currentSessionId;
       if (!activeSessionId) {
-        creatingSessionRef.current = true;  // Mark that we're creating a session
+        setIsNewlyCreatedSession(true);  // Mark that we're creating a session
         const sessionRes = await fetch('/api/chat/session/new', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -173,7 +164,6 @@ export default function ChatBox({
           onSessionCreated?.(activeSessionId);
 
           // Don't clear messages - we want to keep the user message visible
-          creatingSessionRef.current = false;
         }
       }
 
