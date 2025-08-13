@@ -6,11 +6,11 @@ export async function POST(request) {
     const { contactId, sessionId } = await request.json();
     console.log('🔍 Analyzing status for:', { contactId, sessionId });
     
-    // Get conversation messages
+    // Get conversation messages - FIX: Use correct table name
     let messages = [];
     if (sessionId) {
       const { data, error } = await supabaseAdmin
-        .from('messages')  // ← FIX: Changed from 'chat_messages' to 'messages'
+        .from('chat_messages')  // ← CORRECT TABLE NAME
         .select('content, role, created_at')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
@@ -24,8 +24,8 @@ export async function POST(request) {
       console.log(`📝 Found ${messages.length} messages`);
     }
     
-    // If no messages in session, return ACTIVE for new contacts
-    if (messages.length === 0) {
+    // If no sessionId (new contact), return ACTIVE
+    if (!sessionId || messages.length === 0) {
       console.log('✨ New contact - returning ACTIVE');
       return NextResponse.json({ status: 'ACTIVE' });
     }
@@ -34,51 +34,43 @@ export async function POST(request) {
     const lastMessageDate = new Date(messages[messages.length - 1].created_at);
     const daysSinceLastMessage = Math.floor((new Date() - lastMessageDate) / (1000 * 60 * 60 * 24));
     
-    // Format conversation for analysis
+    console.log(`📅 Days since last message: ${daysSinceLastMessage}`);
+    
+    // Format conversation
     const conversationText = messages
       .map(m => `${m.role}: ${m.content}`)
       .join('\n')
-      .slice(0, 2000); // Limit context to save tokens
+      .slice(0, 2000);
     
-    console.log(`📅 Days since last message: ${daysSinceLastMessage}`);
-    
-    // Quick check for payment keywords before calling AI
+    // Quick check for payment keywords
     const paymentKeywords = ['payment received', 'order placed', 'paid', 'purchased', 'payment confirmed'];
     const hasPaymentMention = paymentKeywords.some(keyword => 
       conversationText.toLowerCase().includes(keyword)
     );
     
-    if (hasPaymentMention) {
-      console.log('💰 Payment keywords found - calling AI to confirm');
-    }
+    // Only call AI if there's a conversation to analyze
+    console.log('🤖 Calling OpenRouter...');
     
-    // Analyze with Gemini Flash
     const prompt = `Analyze this conversation and return ONLY one status word:
-- PAID: if you find words like "payment received", "order placed", "paid", "purchased", "payment confirmed", "transaction complete"
-- ACTIVE: if last message was less than 30 days ago (${daysSinceLastMessage} days ago) and no payment mentioned
-- DORMANT: if last message was more than 30 days ago (${daysSinceLastMessage} days ago) and no payment mentioned
+- PAID: if you find words like "payment received", "order placed", "paid", "purchased", "payment confirmed"
+- ACTIVE: if last message < 30 days ago and no payment
+- DORMANT: if last message > 30 days ago and no payment
 - UNSURE: if cannot determine
 
-Today is ${new Date().toLocaleDateString()}.
 Days since last message: ${daysSinceLastMessage}
-
 Conversation:
 ${conversationText}
 
 Return only the status word.`;
 
-    console.log('🤖 Calling OpenRouter...');
-    
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'CRM Status Analyzer'
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',  // ← FIX: Correct model name
+        model: 'google/gemini-2.0-flash-001',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 10,
         temperature: 0.1
@@ -86,22 +78,16 @@ Return only the status word.`;
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenRouter error:', response.status, errorText);
-      
-      // Fallback logic if AI fails
+      console.error('❌ OpenRouter error:', response.status);
+      // Fallback without AI
       if (daysSinceLastMessage > 30) return NextResponse.json({ status: 'DORMANT' });
-      if (daysSinceLastMessage <= 30) return NextResponse.json({ status: 'ACTIVE' });
-      return NextResponse.json({ status: 'UNSURE' });
+      return NextResponse.json({ status: 'ACTIVE' });
     }
 
     const data = await response.json();
     console.log('✅ OpenRouter response:', data);
     
-    const responseText = data.choices?.[0]?.message?.content || '';
-    const status = responseText.trim().toUpperCase();
-    
-    // Validate status
+    const status = data.choices?.[0]?.message?.content?.trim().toUpperCase() || 'UNSURE';
     const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE'];
     const finalStatus = validStatuses.includes(status) ? status : 'UNSURE';
     
