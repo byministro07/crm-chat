@@ -1,3 +1,4 @@
+// app/api/analyze-status/route.js
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -6,39 +7,38 @@ export async function POST(request) {
     const { contactId, sessionId } = await request.json();
     console.log('🔍 Analyzing status for:', { contactId, sessionId });
     
-    // Get conversation messages - FIX: Use correct table name
-    let messages = [];
-    if (sessionId) {
-      const { data, error } = await supabaseAdmin
-        .from('chat_messages')  // ← CORRECT TABLE NAME
-        .select('content, role, created_at')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        return NextResponse.json({ status: 'UNSURE' });
-      }
-      
-      messages = data || [];
-      console.log(`📝 Found ${messages.length} messages`);
+    // Get CUSTOMER conversation history from conversations table
+    const { data: conversations, error } = await supabaseAdmin
+      .from('conversations')  // ← CUSTOMER history, not chat_messages
+      .select('channel, direction, sender, body, occurred_at, created_at')
+      .eq('contact_id', contactId)  // ← Use contactId, not sessionId
+      .order('occurred_at', { ascending: false, nullsFirst: false })
+      .limit(100);
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return NextResponse.json({ status: 'UNKNOWN' });  // ← New status
+    }
+
+    const messages = conversations || [];
+    console.log(`📝 Found ${messages.length} customer conversations`);
+
+    // If no conversations found
+    if (messages.length === 0) {
+      console.log('❓ No customer history - returning UNKNOWN');
+      return NextResponse.json({ status: 'UNKNOWN' });  // ← New status
     }
     
-    // If no sessionId (new contact), return ACTIVE
-    if (!sessionId || messages.length === 0) {
-      console.log('✨ New contact - returning ACTIVE');
-      return NextResponse.json({ status: 'ACTIVE' });
-    }
-    
-    // Get last message date
-    const lastMessageDate = new Date(messages[messages.length - 1].created_at);
+    // Get last message date (most recent first)
+    const mostRecent = messages[0];
+    const lastMessageDate = new Date(mostRecent.occurred_at || mostRecent.created_at);
     const daysSinceLastMessage = Math.floor((new Date() - lastMessageDate) / (1000 * 60 * 60 * 24));
     
     console.log(`📅 Days since last message: ${daysSinceLastMessage}`);
     
     // Format conversation
     const conversationText = messages
-      .map(m => `${m.role}: ${m.content}`)
+      .map(m => `${m.direction || m.sender}: ${m.body}`)
       .join('\n')
       .slice(0, 2000);
     
@@ -88,7 +88,7 @@ Return only the status word.`;
     console.log('✅ OpenRouter response:', data);
     
     const status = data.choices?.[0]?.message?.content?.trim().toUpperCase() || 'UNSURE';
-    const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE'];
+    const validStatuses = ['PAID', 'ACTIVE', 'DORMANT', 'UNSURE', 'UNKNOWN'];
     const finalStatus = validStatuses.includes(status) ? status : 'UNSURE';
     
     console.log('📊 Final status:', finalStatus);
@@ -96,7 +96,7 @@ Return only the status word.`;
     
   } catch (error) {
     console.error('💥 Status analysis error:', error);
-    return NextResponse.json({ status: 'UNSURE' });
+    return NextResponse.json({ status: 'UNKNOWN' });
   }
 }
 

@@ -381,6 +381,11 @@
   color: #8e8e93;
 }
 
+.statusUNKNOWN {
+  background: #f0f0f0;
+  color: #666;
+}
+
 /* Loading Spinner */
 .statusLoading {
   display: inline-flex;

@@ -113,7 +113,7 @@ export default function Home() {
     // Clear everything first
     setMessages([]);
     setSessionId(null);
-    setCustomerStatus(null);  // Clear old status
+    setCustomerStatus('UNKNOWN');  // Show "not analyzed yet"
     
     // Set new contact
     setSelectedContact(contact);
@@ -361,9 +361,11 @@ export default function Home() {
                         {customerStatus === 'ACTIVE' && '✓'}
                         {customerStatus === 'DORMANT' && 'zzz'}
                         {customerStatus === 'UNSURE' && '?'}
+                        {customerStatus === 'UNKNOWN' && '—'}
                       </span>
                       <span className={styles.statusText}>
-                        {customerStatus.charAt(0) + customerStatus.slice(1).toLowerCase()}
+                        {customerStatus === 'UNKNOWN' ? 'Not Analyzed' : 
+                         customerStatus.charAt(0) + customerStatus.slice(1).toLowerCase()}
                       </span>
                     </div>
                   ) : null}
