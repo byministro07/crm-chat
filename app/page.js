@@ -108,6 +108,7 @@ export default function Home() {
   };
 
   const handleContactSelect = async (contact) => {
+    console.log('handleContactSelect: Starting for', contact.name);
     // Clear everything first
     setMessages([]);
     setSessionId(null);
@@ -123,7 +124,9 @@ export default function Home() {
     }
     
     // Analyze status for new contact
-    analyzeCustomerStatus(contact.id, null);
+    console.log('handleContactSelect: Calling analyzeCustomerStatus');
+    await analyzeCustomerStatus(contact.id, null);
+    console.log('handleContactSelect: Status analysis complete');
   };
 
   const handleSessionSelect = async (newSessionId) => {

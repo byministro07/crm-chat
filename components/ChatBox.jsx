@@ -202,7 +202,7 @@ export default function ChatBox({
                 </div>
               );
             })}
-            {loading && (
+            {(loading) && (
               <div className={styles.messageWrapper}>
                 <div className={styles.loadingMessage}>
                   <span className={styles.dot}></span>
