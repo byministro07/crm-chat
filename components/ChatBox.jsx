@@ -8,6 +8,10 @@ import styles from './ChatBox.module.css';
 export default function ChatBox({ 
   contactId, 
   sessionId, 
+  messages,        // from parent
+  setMessages,     // from parent
+  loading,         // from parent
+  setLoading,      // from parent
   modelTier, 
   thinkHarder, 
   setThinkHarder,
@@ -29,11 +33,7 @@ export default function ChatBox({
       .replace(/&lt;(\/?)(b|i|strong|em|u|br|p|h[1-6]|ul|ol|li|code|pre|blockquote)&gt;/gi, '<$1$2>');
     return marked.parse(sanitized);
   };
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState(sessionId);
-  const [isNewlyCreatedSession, setIsNewlyCreatedSession] = useState(false);
   const [showModeToast, setShowModeToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showRetryDropdown, setShowRetryDropdown] = useState(false);
@@ -41,36 +41,10 @@ export default function ChatBox({
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-	// Load messages if we have a session
-	useEffect(() => {
-		if (sessionId) {
-			setCurrentSessionId(sessionId);
-			
-			// If this session was just created by us, don't load (we have the messages already)
-			if (isNewlyCreatedSession) {
-				setIsNewlyCreatedSession(false);
-				return;
-			}
-			
-			// Otherwise load messages from the server
-			loadMessages(sessionId);
-		} else {
-			setMessages([]);
-			setCurrentSessionId(null);
-		}
-	}, [sessionId, isNewlyCreatedSession]);
-
   // Reset to Flash mode when changing conversations or contacts
   useEffect(() => {
     setThinkHarder(false);
   }, [sessionId, contactId]);
-
-  // Clear messages when switching contacts
-  useEffect(() => {
-    setMessages([]);
-    setCurrentSessionId(null);
-    setIsNewlyCreatedSession(false);
-  }, [contactId]);
 
   // Auto-focus input
   useEffect(() => {
@@ -113,17 +87,7 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-	const loadMessages = async (sessionId) => {
-		try {
-			const res = await fetch(`/api/chat/session/messages?sessionId=${sessionId}`);
-			if (res.ok) {
-				const data = await res.json();
-				setMessages(data.messages || []);
-			}
-		} catch (err) {
-			console.error('Failed to load messages:', err);
-		}
-	};
+
 
   const handleSend = async () => {
     if (!input.trim() || !contactId || loading) return;
@@ -144,9 +108,9 @@ export default function ChatBox({
 
     try {
       // Create session if needed (only on first message)
-      let activeSessionId = currentSessionId;
+      let activeSessionId = sessionId;
       if (!activeSessionId) {
-        setIsNewlyCreatedSession(true);  // Mark that we're creating a session
+        // Creating a new session
         const sessionRes = await fetch('/api/chat/session/new', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -160,7 +124,6 @@ export default function ChatBox({
         if (sessionRes.ok) {
           const sessionData = await sessionRes.json();
           activeSessionId = sessionData.sessionId;
-          setCurrentSessionId(activeSessionId);
           onSessionCreated?.(activeSessionId);
 
           // Don't clear messages - we want to keep the user message visible
@@ -240,7 +203,7 @@ export default function ChatBox({
           contactId,
           question: userMessage,
           tier: useGeniusMode ? 'high' : 'medium',
-          sessionId: currentSessionId,
+          sessionId: sessionId,
           isRetry: true
         })
       });
